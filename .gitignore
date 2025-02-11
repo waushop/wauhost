@@ -1,0 +1,17 @@
+# Ignore log files
+*.log
+*.tmp
+*.swp
+
+# Ignore Helm and Kubernetes generated files
+charts/*/charts/
+charts/*/tmp/
+charts/*/values.yaml
+charts/*/Chart.lock
+charts/*/crds/
+
+# Ignore sensitive files (should be managed via secrets)
+values/*.yaml
+!values/ingress.yaml
+!values/mysql.yaml
+!values/ghost.yaml

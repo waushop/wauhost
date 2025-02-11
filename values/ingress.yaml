@@ -1,0 +1,5 @@
+ingress:
+  controller: traefik
+  domains:
+    - host: blog.ee
+      service: ghost

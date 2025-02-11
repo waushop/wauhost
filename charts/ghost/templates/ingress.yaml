@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ghost-ingress
+  annotations:
+    kubernetes.io/ingress.class: "{{ .Values.ghost.ingress.class }}"
+    cert-manager.io/cluster-issuer: "{{ .Values.ghost.ingress.tlsIssuer }}"
+spec:
+  tls:
+    - hosts:
+        - "{{ .Values.ghost.domain }}"
+      secretName: ghost-tls
+  rules:
+    - host: "{{ .Values.ghost.domain }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ghost
+                port:
+                  number: 80

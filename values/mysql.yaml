@@ -1,0 +1,6 @@
+mysql:
+  rootPassword: "supersecret"
+  database:
+    name: ghost
+    user: ghost
+    password: "mypassword"

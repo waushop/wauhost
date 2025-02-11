@@ -1,0 +1,7 @@
+ghost:
+  name: blog
+  domain: blog.ee
+  database:
+    host: mysql
+    user: ghost
+    password: "{{ .Values.mysql.password }}"
