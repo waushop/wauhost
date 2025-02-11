@@ -1,6 +1,6 @@
 mysql:
-  rootPassword: "supersecret"
+  rootPassword: "newrootpassword"
   database:
     name: ghost
     user: ghost
-    password: "mypassword"
+    password: "newdatabasepassword"
