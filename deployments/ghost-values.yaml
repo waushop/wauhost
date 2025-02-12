@@ -1,6 +1,6 @@
 ghost:
   name: blog
-  domain: blog.ee
+  domain: "{{ .Values.ghost.domain }}"
   database:
     host: mysql
     user: ghost
