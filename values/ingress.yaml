@@ -1,5 +1,9 @@
 ingress:
-  controller: nginx
+  controller: "{{ .Values.global.ingressClass }}"
   domains:
-    - host: "{{ .Values.ghost.domain }}"
+    - host: "{{ .Values.global.domain }}"
       service: ghost
+      port: 2368
+  tls:
+    enabled: true
+    issuer: "{{ .Values.global.tlsIssuer }}"

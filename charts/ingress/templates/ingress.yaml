@@ -8,16 +8,16 @@ metadata:
 spec:
   tls:
     - hosts:
-        - "{{ .Values.ghost.domain }}"
+        - "{{ .Values.global.domain }}"
       secretName: ghost-tls
   rules:
-    - host: "{{ .Values.ghost.domain }}"
+    - host: "{{ .Values.global.domain }}"
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: "ghost"
+                name: ghost
                 port:
                   number: 80
