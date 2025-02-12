@@ -1,5 +1,5 @@
 ingress:
-  controller: traefik
+  controller: nginx
   domains:
-    - host: blog.ee
+    - host: blog.newdomain.com
       service: ghost
