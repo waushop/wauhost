@@ -19,6 +19,6 @@ if ! command -v ghcp &> /dev/null; then
 fi
 
 # Push the infra-repo to GitHub
-ghcp commit --user "$GITHUB_USER" --repo "$GITHUB_REPO" --branch "$GITHUB_BRANCH" --message "Auto-update infra" ./infra-repo
+ghcp commit --user "$GITHUB_USER" --repo "$GITHUB_REPO" --branch "$GITHUB_BRANCH" --message "Auto-update infra" ./wauhost_fixed
 
 echo "✅ Successfully pushed to GitHub!"

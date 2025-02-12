@@ -1,7 +1,10 @@
 ghost:
-  name: blog
-  domain: blog.newdomain.com
+  domain: "{{ .Values.global.domain }}"
   database:
     host: mysql
     user: ghost
-    password: "newpassword"
+    password: "{{ .Values.secrets.mysql.password }}"
+  ingress:
+    enabled: true
+    class: "{{ .Values.global.ingressClass }}"
+    tlsIssuer: "{{ .Values.global.tlsIssuer }}"

@@ -5,3 +5,7 @@ ghost:
     host: mysql
     user: ghost
     password: "{{ .Values.mysql.password }}"
+  ingress:
+    enabled: true
+    class: "nginx"
+    tlsIssuer: "letsencrypt-prod"

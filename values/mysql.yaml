@@ -1,6 +1,9 @@
 mysql:
-  rootPassword: "newrootpassword"
+  rootPassword: "supersecret"
   database:
     name: ghost
     user: ghost
-    password: "newdatabasepassword"
+    password: "mypassword"
+  storage:
+    size: 10Gi
+    class: standard
