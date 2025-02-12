@@ -1,7 +1,7 @@
 ghost:
   name: blog
-  domain: blog.newdomain.com
+  domain: "{{ .Values.ghost.domain }}"
   database:
     host: mysql
     user: ghost
-    password: "newpassword"
+    password: "{{ .Values.mysql.password }}"

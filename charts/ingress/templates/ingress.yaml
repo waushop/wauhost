@@ -8,10 +8,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - "blog.example.com"
+        - "{{ .Values.ghost.domain }}"
       secretName: ghost-tls
   rules:
-    - host: "blog.example.com"
+    - host: "{{ .Values.ghost.domain }}"
       http:
         paths:
           - path: /

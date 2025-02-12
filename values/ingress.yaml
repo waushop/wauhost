@@ -1,5 +1,5 @@
 ingress:
   controller: nginx
   domains:
-    - host: blog.newdomain.com
+    - host: "{{ .Values.ghost.domain }}"
       service: ghost
