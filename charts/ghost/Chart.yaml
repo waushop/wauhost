@@ -1,6 +1,6 @@
 apiVersion: v2
 name: ghost
-description: A Helm chart for Ghost CMS
+description: Ghost blog
 type: application
-version: 1.0.0
+version: 0.1.0
 appVersion: "5.0"

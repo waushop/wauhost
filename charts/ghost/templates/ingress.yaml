@@ -1,17 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ghost-ingress
+  name: vausiim-ingress
+  namespace: vausiim
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
+  ingressClassName: traefik
   tls:
     - hosts:
-        - "{{ .Values.ghost.domain }}"
-      secretName: ghost-tls
+        - "vaus.ee"
+      secretName: "vausiim-tls"
   rules:
-    - host: "{{ .Values.ghost.domain }}"
+    - host: "vaus.ee"
       http:
         paths:
           - path: /

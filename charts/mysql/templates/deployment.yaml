@@ -2,8 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
-  labels:
-    app: mysql
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: 1
   selector:
@@ -17,33 +16,18 @@ spec:
       containers:
         - name: mysql
           image: mysql:8.0
+          ports:
+            - containerPort: 3306
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: root-password
-            - name: MYSQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: database
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: user
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: password
-          ports:
-            - containerPort: 3306
+                  key: mysql-root-password
           volumeMounts:
-            - name: mysql-storage
+            - name: mysql-data
               mountPath: /var/lib/mysql
       volumes:
-        - name: mysql-storage
+        - name: mysql-data
           persistentVolumeClaim:
             claimName: mysql-pvc

@@ -1,9 +1,0 @@
-mysql:
-  rootPassword: "supersecret"
-  database:
-    name: ghost
-    user: ghost
-    password: "mypassword"
-  storage:
-    size: 10Gi
-    class: standard
