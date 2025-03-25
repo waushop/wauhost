@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+spec:
+  ingressClassName: "{{ .Values.wordpress.ingress.className }}"  # Correct way
+  rules:
+    - host: {{ .Values.wordpress.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - {{ .Values.wordpress.ingress.host }}
+      secretName: wordpress-tls

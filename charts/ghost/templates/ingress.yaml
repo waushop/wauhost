@@ -9,10 +9,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - "vaus.ee"
+        - "vausiim.ee"
       secretName: "vausiim-tls"
   rules:
-    - host: "vaus.ee"
+    - host: "vausiim.ee"
       http:
         paths:
           - path: /

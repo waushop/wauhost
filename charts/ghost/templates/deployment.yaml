@@ -28,6 +28,29 @@ spec:
               value: "{{ .Values.database.password }}"
             - name: database__connection__database
               value: "{{ .Values.database.database }}"
+            - name: mail__transport
+              value: "{{ .Values.mail.transport }}"
+            - name: mail__options__service
+              value: "{{ .Values.mail.options.service }}"
+            - name: mail__options__host
+              value: "{{ .Values.mail.options.host }}"
+            - name: mail__options__port
+              value: "{{ .Values.mail.options.port }}"
+            - name: mail__options__secure
+              value: "{{ .Values.mail.options.secure }}"
+            - name: mail__options__auth__user
+              value: "{{ .Values.mail.options.auth.user }}"
+            - name: mail__options__auth__pass
+              value: "{{ .Values.mail.options.auth.pass }}"
+            - name: mail__from
+              value: "{{ .Values.mail.from }}"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
           ports:
             - containerPort: 2368
           volumeMounts:
