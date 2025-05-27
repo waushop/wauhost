@@ -1,0 +1,130 @@
+{{- $fullName := include "longhorn.fullname" . -}}
+🎉 Longhorn has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Values.namespace }}
+   Release:   {{ .Release.Name }}
+   Replicas:  {{ .Values.longhorn.replicas }}
+
+{{- if .Values.longhorn.ui.enabled }}
+🌐 Access UI:
+   {{- if .Values.longhorn.ui.host }}
+   URL: https://{{ .Values.longhorn.ui.host }}
+   {{- else }}
+   Port-forward: kubectl port-forward -n {{ .Values.namespace }} svc/longhorn-frontend 8080:80
+   URL: http://localhost:8080
+   {{- end }}
+   
+   {{- if .Values.externalSecrets.enabled }}
+   Credentials are managed by External Secrets.
+   Secret Name: {{ $fullName }}-ui-auth
+   {{- else }}
+   ⚠️  WARNING: Using local auth secret. Consider enabling External Secrets for production!
+   {{- end }}
+{{- end }}
+
+💾 Storage Classes:
+   The following storage classes have been created:
+   - longhorn (default): Standard replicated storage
+   - longhorn-fast: High-performance with data locality
+   - longhorn-backup: Storage with automated backups
+
+   Create a PVC:
+   ```yaml
+   apiVersion: v1
+   kind: PersistentVolumeClaim
+   metadata:
+     name: my-pvc
+   spec:
+     accessModes:
+       - ReadWriteOnce
+     storageClassName: longhorn
+     resources:
+       requests:
+         storage: 10Gi
+   ```
+
+{{- if .Values.longhorn.backup.target }}
+🔄 Backup Configuration:
+   Target:   {{ .Values.longhorn.backup.target }}
+   Endpoint: {{ .Values.longhorn.backup.endpoint }}
+   
+   {{- if .Values.externalSecrets.enabled }}
+   Backup credentials are managed by External Secrets.
+   {{- else }}
+   ⚠️  WARNING: Using local backup credentials. Enable External Secrets for production!
+   {{- end }}
+   
+   View backup status:
+   kubectl get backups.longhorn.io -n {{ .Values.namespace }}
+{{- end }}
+
+{{- if .Values.networkPolicy.enabled }}
+🔒 Security:
+   ✓ Network Policy enabled
+   ✓ RBAC configured
+   ✓ Pod Security Standards applied
+{{- end }}
+
+📊 Monitoring:
+   # Check volume status
+   kubectl get volumes.longhorn.io -n {{ .Values.namespace }}
+   
+   # Check node status
+   kubectl get nodes.longhorn.io -n {{ .Values.namespace }}
+   
+   # View engine status
+   kubectl get engines.longhorn.io -n {{ .Values.namespace }}
+
+🛠️ Common Operations:
+
+1. **Create Snapshot**:
+   ```bash
+   kubectl create -f - <<EOF
+   apiVersion: longhorn.io/v1beta2
+   kind: Snapshot
+   metadata:
+     name: my-snapshot
+     namespace: {{ .Values.namespace }}
+   spec:
+     volume: <volume-name>
+   EOF
+   ```
+
+2. **Create Backup**:
+   ```bash
+   # First create a snapshot, then backup
+   kubectl annotate snapshot <snapshot-name> -n {{ .Values.namespace }} \
+     longhorn.io/backup=true
+   ```
+
+3. **Restore from Backup**:
+   ```bash
+   # List backups
+   kubectl get backups.longhorn.io -n {{ .Values.namespace }}
+   
+   # Create restore
+   kubectl create -f restore-pvc.yaml
+   ```
+
+📚 Best Practices:
+   1. Use appropriate storage class based on workload
+   2. Configure recurring snapshots for critical data
+   3. Test backup restoration regularly
+   4. Monitor volume health and space usage
+   5. Keep Longhorn updated
+
+🆘 Troubleshooting:
+   # Check Longhorn components
+   kubectl get pods -n {{ .Values.namespace }}
+   
+   # View manager logs
+   kubectl logs -n {{ .Values.namespace }} -l app=longhorn-manager --tail=100
+   
+   # Check CSI driver
+   kubectl get pods -n {{ .Values.namespace }} -l app=longhorn-csi-plugin
+   
+   # View events
+   kubectl get events -n {{ .Values.namespace }} --sort-by='.lastTimestamp'
+
+For more information, visit: https://longhorn.io/docs/

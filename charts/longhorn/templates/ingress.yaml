@@ -1,0 +1,35 @@
+{{- if .Values.longhorn.ui.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn-ui
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "longhorn.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.longhorn.ui.ingressClassName | default "traefik" }}
+    traefik.ingress.kubernetes.io/auth-type: basic
+    traefik.ingress.kubernetes.io/auth-secret: longhorn-auth
+    {{- if .Values.longhorn.ui.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.longhorn.ui.clusterIssuer | default "letsencrypt-prod" }}
+    {{- end }}
+spec:
+  {{- if .Values.longhorn.ui.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.longhorn.ui.host }}
+    secretName: longhorn-tls
+  {{- end }}
+  rules:
+  - host: {{ .Values.longhorn.ui.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: longhorn-frontend
+            port:
+              number: 80
+{{- end }}

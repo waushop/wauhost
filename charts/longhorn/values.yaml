@@ -1,0 +1,43 @@
+# External Secrets Configuration
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStore: cluster-secret-store
+  secretStoreKind: ClusterSecretStore
+  remoteRefs:
+    accessKeyId: wauhost/longhorn/backup-access-key
+    secretAccessKey: wauhost/longhorn/backup-secret-key
+    uiAuth: wauhost/longhorn/ui-auth
+
+# Namespace for Longhorn
+namespace: longhorn-system
+
+longhorn:
+  replicas: 3
+  backup:
+    target: "s3://longhorn-backups@eu-central/"
+    # Credentials managed by External Secrets
+    # Set these only for development/testing when externalSecrets.enabled=false
+    accessKeyId: ""  # Override with external secret
+    secretAccessKey: ""  # Override with external secret
+    endpoint: "https://s3.eu-central-003.backblazeb2.com"
+    region: "eu-central"
+  ui:
+    enabled: true
+    host: "longhorn.local"  # Updated to match current deployment
+    ingressClassName: "traefik"
+    clusterIssuer: "letsencrypt-prod"
+    tls:
+      enabled: false  # Currently disabled, set to true when ready for HTTPS
+    # Auth managed by External Secrets
+    # When externalSecrets.enabled=false, you MUST provide these values
+    # Generate htpasswd string with: htpasswd -nb admin YOUR_PASSWORD
+    auth:
+      username: ""    # REQUIRED: Set admin username when externalSecrets.enabled=false
+      password: ""    # REQUIRED: Set admin password when externalSecrets.enabled=false
+      # Full htpasswd string for basic auth
+      htpasswd: ""    # REQUIRED: Set htpasswd string when externalSecrets.enabled=false
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: false
