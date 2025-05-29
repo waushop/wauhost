@@ -1,0 +1,146 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wordpress.fullname" . }}
+  namespace: {{ .Values.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "wordpress.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.wordpress.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wordpress.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wordpress.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- if .Values.rbac.create }}
+      serviceAccountName: {{ include "wordpress.fullname" . }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33  # www-data user in WordPress container
+        runAsGroup: 33
+        fsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wordpress
+          image: "{{ .Values.wordpress.image.repository }}:{{ .Values.wordpress.image.tag }}"
+          imagePullPolicy: {{ .Values.wordpress.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # WordPress needs to write to filesystem
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: "{{ .Values.wordpress.env.WORDPRESS_DB_HOST }}"
+            - name: WORDPRESS_DB_USER
+              value: "{{ .Values.wordpress.env.WORDPRESS_DB_USER }}"
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "wordpress.fullname" . }}-db-credentials
+                  key: WORDPRESS_DB_PASSWORD
+                  {{- else }}
+                  name: {{ include "wordpress.fullname" . }}-secret
+                  key: WORDPRESS_DB_PASSWORD
+                  {{- end }}
+            - name: WORDPRESS_DB_NAME
+              value: "{{ .Values.wordpress.env.WORDPRESS_DB_NAME }}"
+            # Security headers and WordPress config
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('FORCE_SSL_ADMIN', true);
+                define('DISALLOW_FILE_EDIT', true);
+                define('DISALLOW_FILE_MODS', true);
+                define('WP_DEBUG', false);
+                define('WP_DEBUG_LOG', false);
+                define('WP_DEBUG_DISPLAY', false);
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /wp-admin/install.php
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: "{{ .Values.wordpress.ingress.host | default "localhost" }}"
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: "{{ .Values.wordpress.ingress.host | default "localhost" }}"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /wp-admin/install.php
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: "{{ .Values.wordpress.ingress.host | default "localhost" }}"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+          volumeMounts:
+            - name: wordpress-data
+              mountPath: /var/www/html
+            {{- if .Values.wordpress.persistence.enabled }}
+            - name: wordpress-uploads
+              mountPath: /var/www/html/wp-content/uploads
+            {{- end }}
+          resources:
+            requests:
+              cpu: "250m"      # 0.25 CPU (enough for handling normal requests)
+              memory: "512Mi"  # 512MB RAM (to handle caching and basic plugins)
+            limits:
+              cpu: "1"         # Limit WordPress to 1 full CPU core
+              memory: "1Gi"    # 1GB max RAM (adjust if needed for heavy plugins)
+      volumes:
+        - name: wordpress-data
+          {{- if .Values.wordpress.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "wordpress.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.wordpress.persistence.enabled }}
+        - name: wordpress-uploads
+          persistentVolumeClaim:
+            claimName: {{ include "wordpress.fullname" . }}-uploads
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

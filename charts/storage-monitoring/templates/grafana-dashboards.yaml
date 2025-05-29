@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-dashboard
+  namespace: {{ .Values.monitoring.namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  longhorn-dashboard.json: |
+    {{ .Files.Get "dashboards/longhorn-dashboard.json" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-dashboard
+  namespace: {{ .Values.monitoring.namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  minio-dashboard.json: |
+    {{ .Files.Get "dashboards/minio-dashboard.json" | nindent 4 }}

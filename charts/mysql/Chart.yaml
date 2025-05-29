@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: mysql
 description: Shared MySQL instance for Ghost blogs

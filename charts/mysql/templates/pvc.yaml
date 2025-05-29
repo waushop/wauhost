@@ -1,8 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pvc
+  name: {{ include "mysql.fullname" . }}-data
   namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce

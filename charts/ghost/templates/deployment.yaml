@@ -1,33 +1,77 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.releaseName }}
+  name: {{ include "ghost.fullname" . }}
   namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ghost.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.releaseName }}
+      {{- include "ghost.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
-        app: {{ .Values.releaseName }}
+        {{- include "ghost.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+      {{- end }}
       containers:
         - name: ghost
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.securityContext.enabled }}
+          securityContext:
+            runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.securityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
           env:
+            # Ghost Configuration
             - name: url
               value: "https://{{ .Values.host }}"
+            - name: NODE_ENV
+              value: "production"
+            
+            # Database Configuration
             - name: database__connection__host
               value: "{{ .Values.database.host }}"
             - name: database__connection__user
               value: "{{ .Values.database.user }}"
             - name: database__connection__password
+              {{- if .Values.externalSecrets.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: database__connection__password
+              {{- else }}
               value: "{{ .Values.database.password }}"
+              {{- end }}
             - name: database__connection__database
               value: "{{ .Values.database.database }}"
+            - name: database__pool__min
+              value: "{{ .Values.ghost.config.database.pool.min | default 2 }}"
+            - name: database__pool__max
+              value: "{{ .Values.ghost.config.database.pool.max | default 10 }}"
+            
+            {{- if .Values.mail.enabled }}
+            # Mail Configuration
             - name: mail__transport
               value: "{{ .Values.mail.transport }}"
             - name: mail__options__service
@@ -35,27 +79,89 @@ spec:
             - name: mail__options__host
               value: "{{ .Values.mail.options.host }}"
             - name: mail__options__port
-              value: "{{ .Values.mail.options.port }}"
+              value: "{{ .Values.mail.options.port | toString }}"
             - name: mail__options__secure
-              value: "{{ .Values.mail.options.secure }}"
+              value: "{{ .Values.mail.options.secure | toString }}"
             - name: mail__options__auth__user
               value: "{{ .Values.mail.options.auth.user }}"
             - name: mail__options__auth__pass
+              {{- if and .Values.mail.enabled .Values.externalSecrets.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: mail__options__auth__pass
+              {{- else if .Values.mail.enabled }}
               value: "{{ .Values.mail.options.auth.pass }}"
+              {{- end }}
             - name: mail__from
               value: "{{ .Values.mail.from }}"
+            {{- end }}
+            
+            # Privacy & Performance Configuration
+            - name: privacy__useUpdateCheck
+              value: "{{ .Values.ghost.config.privacy.useUpdateCheck | default false | toString }}"
+            - name: privacy__useGravatar
+              value: "{{ .Values.ghost.config.privacy.useGravatar | default false | toString }}"
+            - name: privacy__useRpcPing
+              value: "{{ .Values.ghost.config.privacy.useRpcPing | default false | toString }}"
+            
+            # Logging Configuration
+            - name: logging__level
+              value: "{{ .Values.ghost.config.logging.level | default "info" }}"
+            
+            # Server Configuration
+            - name: server__port
+              value: "{{ .Values.ghost.config.server.port | default 2368 | toString }}"
+            - name: server__host
+              value: "{{ .Values.ghost.config.server.host | default "0.0.0.0" }}"
+          
           resources:
-            requests:
-              memory: "256Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
+            {{- toYaml .Values.resources | nindent 12 }}
+          
           ports:
-            - containerPort: 2368
+            - name: http
+              containerPort: {{ .Values.ghost.config.server.port | default 2368 }}
+              protocol: TCP
+          
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          
           volumeMounts:
             - name: ghost-content
-              mountPath: /var/lib/ghost/content
+              mountPath: {{ .Values.ghost.config.paths.contentPath | default "/var/lib/ghost/content" }}
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
       volumes:
         - name: ghost-content
           persistentVolumeClaim:

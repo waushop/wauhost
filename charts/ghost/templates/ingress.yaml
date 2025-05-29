@@ -1,24 +1,36 @@
+{{- if .Values.ingress.enabled }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vausiim-ingress
-  namespace: vausiim
+  name: {{ include "ghost.fullname" . }}-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ghost.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  ingressClassName: traefik
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - "vausiim.ee"
-      secretName: "vausiim-tls"
+        - {{ tpl .Values.ingress.host . | quote }}
+      secretName: {{ tpl .Values.ingress.tls.secretName . }}
+  {{- end }}
   rules:
-    - host: "vausiim.ee"
+    - host: {{ tpl .Values.ingress.host . | quote }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: ghost
+                name: {{ include "ghost.fullname" . }}
                 port:
-                  number: 80
+                  number: {{ .Values.service.port }}
+{{- end }}

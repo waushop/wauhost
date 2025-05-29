@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "minio.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "minio.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "minio.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: "/minio/v2/metrics/cluster"
+        {{- if .Values.podAnnotations }}
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.rbac.create }}
+      serviceAccountName: {{ include "minio.fullname" . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: minio
+        image: {{ .Values.minio.image }}:{{ .Values.minio.tag }}
+        imagePullPolicy: IfNotPresent
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.externalSecrets.enabled }}
+              name: {{ include "minio.fullname" . }}-credentials
+              {{- else }}
+              name: {{ .Release.Name }}-secret
+              {{- end }}
+              key: rootUser
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.externalSecrets.enabled }}
+              name: {{ include "minio.fullname" . }}-credentials
+              {{- else }}
+              name: {{ .Release.Name }}-secret
+              {{- end }}
+              key: rootPassword
+        - name: MINIO_PROMETHEUS_AUTH_TYPE
+          value: "public"
+        - name: MINIO_UPDATE
+          value: "off"
+        - name: MINIO_BROWSER_REDIRECT_URL
+          value: "https://{{ .Values.minio.console.host }}"
+        - name: MINIO_BROWSER_URL
+          value: "https://{{ .Values.minio.console.host }}"
+        ports:
+        - containerPort: 9000
+          name: api
+          protocol: TCP
+        - containerPort: 9001
+          name: console
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: api
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: api
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 15
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: {{ .Values.minio.resources.requests.memory }}
+            cpu: {{ .Values.minio.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.minio.resources.limits.memory }}
+            cpu: {{ .Values.minio.resources.limits.cpu }}
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-data
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Release.Name }}
+              topologyKey: kubernetes.io/hostname

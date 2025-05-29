@@ -1,0 +1,46 @@
+{{- if .Values.longhorn.ui.enabled }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: longhorn-auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "longhorn.labels" . | nindent 4 }}
+spec:
+  basicAuth:
+    secret: longhorn-auth
+    removeHeader: true
+{{- if .Values.longhorn.ui.security.rateLimit.enabled }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: longhorn-ratelimit
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "longhorn.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ .Values.longhorn.ui.security.rateLimit.average }}
+    burst: {{ .Values.longhorn.ui.security.rateLimit.burst }}
+    period: {{ .Values.longhorn.ui.security.rateLimit.period }}
+    sourceCriterion:
+      ipStrategy:
+        depth: {{ .Values.longhorn.ui.security.rateLimit.ipDepth }}
+{{- end }}
+{{- if not .Values.longhorn.ui.tls.enabled }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "longhorn.labels" . | nindent 4 }}
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+{{- end }}
+{{- end }}

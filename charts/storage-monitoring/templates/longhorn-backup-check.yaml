@@ -1,0 +1,96 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-backup-check
+  namespace: longhorn-system
+spec:
+  schedule: "0 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: longhorn-backup-sa
+          containers:
+            - name: backup-check
+              image: curlimages/curl:8.5.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Check backup status via Longhorn API
+                  LONGHORN_URL="http://longhorn-frontend.longhorn-system.svc.cluster.local"
+
+                  # Get all backups
+                  BACKUPS=$(curl -s "$LONGHORN_URL/v1/backupvolumes")
+
+                  # Check if backups are recent (within last 24 hours)
+                  CURRENT_TIME=$(date +%s)
+                  BACKUP_FAILED=0
+
+                  for backup in $(echo "$BACKUPS" | jq -r '.data[].name'); do
+                    LAST_BACKUP=$(curl -s "$LONGHORN_URL/v1/backupvolumes/$backup" | jq -r '.lastBackupAt')
+                    if [ "$LAST_BACKUP" != "null" ]; then
+                      LAST_BACKUP_TIME=$(date -d "$LAST_BACKUP" +%s 2>/dev/null || echo 0)
+                      TIME_DIFF=$((CURRENT_TIME - LAST_BACKUP_TIME))
+
+                      # If backup is older than 24 hours
+                      if [ $TIME_DIFF -gt 86400 ]; then
+                        echo "WARNING: Backup for volume $backup is older than 24 hours"
+                        BACKUP_FAILED=1
+                      fi
+                    fi
+                  done
+
+                  if [ $BACKUP_FAILED -eq 1 ]; then
+                    echo "Backup check failed - outdated backups detected"
+                    exit 1
+                  fi
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "100m"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                capabilities:
+                  drop:
+                    - ALL
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-backup-sa
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: longhorn-backup-role
+  namespace: longhorn-system
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "services" ]
+    verbs: [ "get", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: longhorn-backup-rolebinding
+  namespace: longhorn-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: longhorn-backup-role
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-backup-sa
+    namespace: longhorn-system

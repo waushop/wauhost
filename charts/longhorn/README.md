@@ -116,7 +116,7 @@ helm install longhorn ./charts/longhorn \
 | `longhorn.ui.enabled` | Enable Longhorn UI | `true` |
 | `longhorn.ui.host` | UI hostname | `"longhorn.example.com"` |
 | `longhorn.ui.ingressClassName` | Ingress class name | `"traefik"` |
-| `longhorn.ui.clusterIssuer` | cert-manager cluster issuer | `"letsencrypt-prod"` |
+| `longhorn.ui.clusterIssuer` | cert-manager cluster issuer | `"letsencrypt"` |
 | `longhorn.ui.auth.users` | Basic auth users (when not using external secrets) | `""` |
 
 ### Storage Classes

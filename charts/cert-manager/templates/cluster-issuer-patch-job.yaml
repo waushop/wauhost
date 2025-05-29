@@ -1,0 +1,93 @@
+---
+{{- if .Values.externalSecrets.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cert-manager.fullname" . }}-patch-issuer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "cert-manager.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "cert-manager.fullname" . }}-patcher
+      containers:
+        - name: patch-issuer
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Wait for the external secret to be ready
+              echo "Waiting for external secret to create the email secret..."
+              for i in {1..60}; do
+                if kubectl get secret {{ include "cert-manager.fullname" . }}-email-secret -n {{ .Release.Namespace }} >/dev/null 2>&1; then
+                  echo "Secret found!"
+                  break
+                fi
+                echo "Waiting... ($i/60)"
+                sleep 2
+              done
+              # Get the email from the secret
+              EMAIL=$(kubectl get secret {{ include "cert-manager.fullname" . }}-email-secret -n {{ .Release.Namespace }} -o jsonpath='{.data.email}' | base64 -d)
+
+              if [ -z "$EMAIL" ]; then
+                echo "Error: Could not retrieve email from secret"
+                exit 1
+              fi
+
+              echo "Retrieved email: $EMAIL"
+
+              # Patch the ClusterIssuer with the email
+              kubectl patch clusterissuer {{ include "cert-manager.clusterIssuerName" . }} \
+                --type=json \
+                -p='[{"op": "replace", "path": "/spec/acme/email", "value": "'$EMAIL'"}]'
+
+              echo "ClusterIssuer patched successfully!"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "cert-manager.fullname" . }}-patcher
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cert-manager.fullname" . }}-patcher
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["clusterissuers"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cert-manager.fullname" . }}-patcher
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cert-manager.fullname" . }}-patcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "cert-manager.fullname" . }}-patcher
+    namespace: {{ .Release.Namespace }}
+{{- end }}

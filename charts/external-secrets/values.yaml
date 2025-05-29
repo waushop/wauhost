@@ -1,0 +1,173 @@
+# External Secrets Operator Values
+# Production-ready configuration with development options
+
+# Vault deployment configuration
+vault:
+  enabled: true
+  name: vault
+  namespace: vault
+  
+  image:
+    repository: hashicorp/vault
+    tag: "1.15.4"
+    pullPolicy: IfNotPresent
+  
+  # Environment settings - set to false for production
+  dev:
+    enabled: false  # Set to true for development only
+    rootToken: "root-token-dev"  # Only used when dev.enabled=true
+  
+  # TLS configuration - enabled for production
+  tls:
+    enabled: true  # Disable for development only
+    certManager:
+      enabled: true
+      issuer: letsencrypt  # Change to your issuer
+      issuerKind: ClusterIssuer
+  
+  service:
+    type: ClusterIP
+    port: 8200
+  
+  persistence:
+    size: 10Gi  # Increase for production
+    accessModes:
+      - ReadWriteOnce
+    storageClass: "longhorn"  # Use your preferred storage class
+  
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  
+  livenessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  
+  readinessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    fsGroup: 1000
+  
+  securityContext:
+    capabilities:
+      add:
+        - IPC_LOCK
+    readOnlyRootFilesystem: true
+  
+  # Production settings
+  logLevel: "info"
+  defaultLeaseTTL: "768h"    # 32 days
+  maxLeaseTTL: "8760h"       # 1 year
+  
+  # Kubernetes unseal configuration
+  unseal:
+    kubernetes:
+      enabled: false  # Enable for production auto-unseal
+  
+  # Initialize Vault with secrets
+  # NOTE: Use scripts/migrate-secrets-to-vault.sh to populate with real secrets
+  init:
+    enabled: true
+    keyShares: 5        # Number of key shares
+    keyThreshold: 3     # Number of key shares required to unseal
+    autoUnseal: false   # Set to true for development only
+    rootToken: ""       # Leave empty to auto-generate
+    
+    # Secrets will be populated by migration script
+    # Run: ./scripts/migrate-secrets-to-vault.sh
+    secrets: {}
+
+# Secret store configuration  
+secretStore:
+  provider: "vault"
+  region: ""
+  server: "https://vault.vault.svc.cluster.local:8200"  # HTTPS for production
+  path: "secret"
+  version: "v2"
+  vaultUrl: ""
+  tenantId: ""
+  projectID: ""
+  
+  # Authentication configuration
+  auth:
+    # Kubernetes authentication (recommended for production)
+    kubernetes:
+      enabled: true  # Enable for production
+      mountPath: "kubernetes"
+      role: "external-secrets"
+    
+    # Token authentication (for development)
+    tokenSecretRef:
+      name: "vault-token"
+      key: "token"
+
+# Chart configuration
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Cluster secret store configuration
+clusterSecretStore:
+  enabled: true
+  name: cluster-secret-store
+
+# External Secrets Operator configuration
+external-secrets:
+  installCRDs: true
+  webhook:
+    port: 9443
+  certController:
+    requeueInterval: 5m
+  metrics:
+    enabled: true
+    port: 8080
+    service:
+      enabled: true
+      port: 8080
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65534
+  podSecurityContext:
+    fsGroup: 65534
+    runAsNonRoot: true
+    runAsUser: 65534
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  
+  # Enable service monitor for Prometheus
+  serviceMonitor:
+    enabled: true
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s

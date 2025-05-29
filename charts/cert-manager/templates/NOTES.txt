@@ -1,0 +1,163 @@
+🎉 Cert-Manager has been configured successfully!
+
+📋 Service Information:
+   Namespace: {{ .Release.Namespace }}
+   Release:   {{ .Release.Name }}
+
+🔐 Cluster Issuers Created:
+   - letsencrypt (Production certificates)
+   - letsencrypt-staging (Testing certificates)
+
+🌐 Using Certificates:
+
+1. **Automatic Certificate (Ingress annotation)**:
+   ```yaml
+   apiVersion: networking.k8s.io/v1
+   kind: Ingress
+   metadata:
+     annotations:
+       cert-manager.io/cluster-issuer: "letsencrypt"
+   spec:
+     tls:
+     - hosts:
+       - example.com
+       secretName: example-com-tls
+   ```
+
+2. **Manual Certificate Request**:
+   ```yaml
+   apiVersion: cert-manager.io/v1
+   kind: Certificate
+   metadata:
+     name: example-com
+   spec:
+     secretName: example-com-tls
+     issuerRef:
+       name: letsencrypt
+       kind: ClusterIssuer
+     dnsNames:
+     - example.com
+     - www.example.com
+   ```
+
+📊 Monitoring Certificates:
+   # List all certificates
+   kubectl get certificates -A
+   
+   # Check certificate status
+   kubectl describe certificate <name> -n <namespace>
+   
+   # View certificate details
+   kubectl get secret <secret-name> -n <namespace> -o yaml | \
+     grep tls.crt | awk '{print $2}' | base64 -d | \
+     openssl x509 -text -noout
+
+🔍 Certificate Status:
+   # Check ready certificates
+   kubectl get certificates -A -o custom-columns=\
+   NAMESPACE:.metadata.namespace,\
+   NAME:.metadata.name,\
+   READY:.status.conditions[0].status,\
+   SECRET:.spec.secretName,\
+   ISSUER:.spec.issuerRef.name
+
+   # Find expiring certificates (< 30 days)
+   kubectl get certificates -A -o json | \
+     jq -r '.items[] | select(.status.notAfter) | 
+     select((.status.notAfter | fromdateiso8601) - now < 2592000) | 
+     "\(.metadata.namespace)/\(.metadata.name): expires \(.status.notAfter)"'
+
+⚠️  Important Notes:
+
+1. **Rate Limits**:
+   Let's Encrypt has rate limits:
+   - 50 certificates per domain per week
+   - 5 duplicate certificates per week
+   - Use letsencrypt-staging for testing!
+
+2. **DNS Propagation**:
+   Ensure DNS is properly configured before requesting certificates:
+   ```bash
+   dig +short example.com
+   nslookup example.com
+   ```
+
+3. **HTTP01 Challenge Requirements**:
+   - Port 80 must be accessible from internet
+   - Ingress controller must be properly configured
+   - No interfering redirects
+
+🛠️ Common Operations:
+
+1. **Force Certificate Renewal**:
+   ```bash
+   # Delete the certificate to trigger renewal
+   kubectl delete certificate <name> -n <namespace>
+   
+   # Or annotate to force renewal
+   kubectl annotate certificate <name> -n <namespace> \
+     cert-manager.io/issue-temporary-certificate="true" --overwrite
+   ```
+
+2. **Switch from Staging to Production**:
+   ```bash
+   # Update the issuer in your ingress/certificate
+   kubectl edit ingress <name> -n <namespace>
+   # Change letsencrypt-staging to letsencrypt
+   
+   # Delete old certificate secret
+   kubectl delete secret <secret-name> -n <namespace>
+   ```
+
+3. **Debug Certificate Issues**:
+   ```bash
+   # Check cert-manager logs
+   kubectl logs -n cert-manager deployment/cert-manager
+   
+   # Check challenge status
+   kubectl describe challenges -A
+   
+   # Check orders
+   kubectl describe orders -A
+   ```
+
+🆘 Troubleshooting:
+
+**Certificate Stuck in Pending**:
+   - Check challenges: `kubectl describe challenges -A`
+   - Verify DNS: `dig +short <domain>`
+   - Check ingress: `kubectl get ingress -A`
+
+**HTTP01 Challenge Failed**:
+   - Ensure port 80 is open
+   - Check ingress controller logs
+   - Verify no HTTP→HTTPS redirect for /.well-known/acme-challenge/
+
+**Rate Limit Exceeded**:
+   - Wait for rate limit reset (1 week)
+   - Use staging issuer for testing
+   - Consider wildcard certificates
+
+**DNS01 Challenge Issues**:
+   - Verify DNS provider credentials
+   - Check DNS propagation time
+   - Ensure correct permissions for DNS API
+
+📚 Best Practices:
+   1. Always test with staging issuer first
+   2. Use wildcard certificates for subdomains
+   3. Monitor certificate expiry dates
+   4. Set up alerts for certificate renewal failures
+   5. Keep cert-manager updated
+
+📈 Monitoring Setup:
+   Configure alerts for:
+   - Certificate expiry < 14 days
+   - Failed certificate requests
+   - Challenge failures
+   - Rate limit approaching
+
+For more information:
+- Cert-Manager Docs: https://cert-manager.io/docs/
+- Let's Encrypt: https://letsencrypt.org/docs/
+- Troubleshooting: https://cert-manager.io/docs/troubleshooting/

@@ -1,0 +1,145 @@
+🎉 Storage Monitoring has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Release.Namespace }}
+   Release:   {{ .Release.Name }}
+
+📊 Monitoring Components:
+   ✓ Prometheus rules for storage alerts
+   ✓ Grafana dashboards for Longhorn and MinIO
+   ✓ Backup health monitoring
+   ✓ Storage capacity alerts
+
+🚨 Configured Alerts:
+   - Storage space < 10% remaining
+   - Backup job failures
+   - Volume degraded state
+   - High storage latency
+   - MinIO bucket quota exceeded
+   - Longhorn node down
+
+📈 Grafana Dashboards:
+   The following dashboards have been deployed:
+   - Longhorn Storage Overview
+   - MinIO Performance Metrics
+   - Backup Status Dashboard
+   - Storage Capacity Planning
+
+   Access Grafana to view dashboards:
+   {{- if .Values.grafana.ingress.enabled }}
+   URL: https://{{ .Values.grafana.ingress.host }}
+   {{- else }}
+   kubectl port-forward -n {{ .Release.Namespace }} svc/grafana 3000:80
+   URL: http://localhost:3000
+   {{- end }}
+
+🔧 Prometheus Configuration:
+   {{- if .Values.prometheus.ingress.enabled }}
+   Prometheus URL: https://{{ .Values.prometheus.ingress.host }}
+   {{- else }}
+   Access Prometheus:
+   kubectl port-forward -n {{ .Release.Namespace }} svc/prometheus 9090:9090
+   URL: http://localhost:9090
+   {{- end }}
+
+   Verify rules are loaded:
+   kubectl exec -n {{ .Release.Namespace }} prometheus-0 -- promtool check rules /etc/prometheus/rules/*.yaml
+
+📊 Key Metrics to Monitor:
+
+1. **Longhorn Metrics**:
+   - longhorn_volume_actual_size_bytes
+   - longhorn_volume_capacity_bytes
+   - longhorn_volume_health
+   - longhorn_node_storage_available_bytes
+   - longhorn_backup_state
+
+2. **MinIO Metrics**:
+   - minio_bucket_usage_total_bytes
+   - minio_bucket_objects_count
+   - minio_http_requests_duration_seconds
+   - minio_s3_requests_total
+   - minio_node_disk_free_bytes
+
+3. **Backup Metrics**:
+   - backup_job_duration_seconds
+   - backup_job_last_success_timestamp
+   - backup_size_bytes
+   - backup_failure_count
+
+🛠️ Common Queries:
+
+1. **Storage Usage by Namespace**:
+   ```promql
+   sum by (namespace) (
+     kubelet_volume_stats_used_bytes{namespace!=""}
+   ) / 1024 / 1024 / 1024
+   ```
+
+2. **Longhorn Volume Health**:
+   ```promql
+   longhorn_volume_health{volume_health!="healthy"}
+   ```
+
+3. **MinIO Bucket Growth Rate**:
+   ```promql
+   rate(minio_bucket_usage_total_bytes[1h])
+   ```
+
+4. **Backup Success Rate**:
+   ```promql
+   rate(backup_job_success_total[24h]) / 
+   rate(backup_job_total[24h]) * 100
+   ```
+
+🔔 Alert Configuration:
+   Alerts are sent to:
+   {{- if .Values.alertmanager.config.receivers }}
+   {{- range .Values.alertmanager.config.receivers }}
+   - {{ .name }}
+   {{- end }}
+   {{- else }}
+   - Default receiver (configure in values.yaml)
+   {{- end }}
+
+   Test alert routing:
+   ```bash
+   kubectl exec -n {{ .Release.Namespace }} alertmanager-0 -- \
+     amtool alert add alertname=test severity=warning \
+     message="Test alert from storage monitoring"
+   ```
+
+📚 Dashboard Import:
+   If dashboards are not automatically loaded:
+   
+   1. Access Grafana
+   2. Go to Dashboards → Import
+   3. Upload JSON files from:
+      - /dashboards/longhorn-dashboard.json
+      - /dashboards/minio-dashboard.json
+
+🆘 Troubleshooting:
+   # Check Prometheus targets
+   kubectl port-forward -n {{ .Release.Namespace }} svc/prometheus 9090:9090
+   # Visit http://localhost:9090/targets
+   
+   # Verify ServiceMonitors
+   kubectl get servicemonitors -n {{ .Release.Namespace }}
+   
+   # Check Prometheus configuration
+   kubectl exec -n {{ .Release.Namespace }} prometheus-0 -- \
+     cat /etc/prometheus/prometheus.yaml
+   
+   # View alert rules
+   kubectl get prometheusrules -n {{ .Release.Namespace }} -o yaml
+
+📈 Capacity Planning:
+   Based on current growth rates, review:
+   - Storage expansion needs
+   - Backup retention policies
+   - Archive strategies
+   - Cost optimization opportunities
+
+For more information on metrics:
+- Longhorn: https://longhorn.io/docs/monitoring/
+- MinIO: https://min.io/docs/minio/linux/operations/monitoring.html

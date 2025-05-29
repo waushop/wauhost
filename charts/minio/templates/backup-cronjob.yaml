@@ -1,0 +1,99 @@
+{{- if .Values.minio.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-backup-scripts
+  namespace: {{ .Values.namespace }}
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Starting MinIO backup at $(date)"
+    
+    # Configure mc client
+    mc alias set minio http://{{ .Release.Name }}:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+    mc alias set backup $BACKUP_ENDPOINT $BACKUP_ACCESS_KEY $BACKUP_SECRET_KEY
+    
+    # Mirror important buckets to backup location
+    {{- range .Values.minio.backup.buckets }}
+    echo "Backing up bucket: {{ . }}"
+    mc mirror --overwrite --remove minio/{{ . }} backup/{{ $.Values.minio.backup.prefix }}/{{ . }}
+    {{- end }}
+    
+    echo "MinIO backup completed at $(date)"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-backup
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.minio.backup.schedule }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: minio/mc:RELEASE.2024-01-16T16-06-34Z
+            command: ["/bin/sh", "/scripts/backup.sh"]
+            env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "minio.fullname" . }}-credentials
+                  key: rootUser
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "minio.fullname" . }}-credentials
+                  key: rootPassword
+            - name: BACKUP_ENDPOINT
+              value: {{ .Values.minio.backup.endpoint }}
+            - name: BACKUP_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "minio.fullname" . }}-backup-credentials
+                  key: accessKey
+            - name: BACKUP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "minio.fullname" . }}-backup-credentials
+                  key: secretKey
+            - name: HOME
+              value: "/tmp"
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              capabilities:
+                drop:
+                - ALL
+              seccompProfile:
+                type: RuntimeDefault
+          volumes:
+          - name: scripts
+            configMap:
+              name: {{ .Release.Name }}-backup-scripts
+              defaultMode: 0755
+          - name: tmp
+            emptyDir: {}
+{{- end }}

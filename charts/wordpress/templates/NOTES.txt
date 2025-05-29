@@ -1,0 +1,121 @@
+{{- $fullName := include "wordpress.fullname" . -}}
+🎉 WordPress has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Values.namespace | default .Release.Namespace }}
+   Release:   {{ .Release.Name }}
+
+🌐 Access WordPress:
+   {{- if .Values.wordpress.ingress.enabled }}
+   URL: http{{ if .Values.wordpress.ingress.tls }}s{{ end }}://{{ .Values.wordpress.ingress.host }}
+   {{- else }}
+   Port-forward: kubectl port-forward -n {{ .Values.namespace | default .Release.Namespace }} svc/{{ .Release.Name }}-wordpress {{ .Values.wordpress.service.port }}:80
+   URL: http://localhost:{{ .Values.wordpress.service.port }}
+   {{- end }}
+
+🔐 Database Configuration:
+   Host: {{ .Values.wordpress.env.WORDPRESS_DB_HOST }}
+   Database: {{ .Values.wordpress.env.WORDPRESS_DB_NAME }}
+   User: {{ .Values.wordpress.env.WORDPRESS_DB_USER }}
+   
+   {{- if .Values.externalSecrets.enabled }}
+   Database password is managed by External Secrets.
+   Secret Name: {{ $fullName }}-db-credentials
+   {{- else }}
+   ⚠️  WARNING: Using local database password. Enable External Secrets for production!
+   {{- end }}
+
+💾 Storage:
+   {{- if .Values.wordpress.persistence.enabled }}
+   PVC Size: {{ .Values.wordpress.persistence.size }}
+   Storage Class: {{ .Values.wordpress.persistence.storageClass | default "default" }}
+   
+   Check PVC status:
+   kubectl get pvc -n {{ .Values.namespace | default .Release.Namespace }}
+   {{- else }}
+   ⚠️  WARNING: Persistence is disabled. Data will be lost on pod restart!
+   {{- end }}
+
+🔧 WordPress Admin Setup:
+   1. Visit the WordPress URL above
+   2. Follow the installation wizard
+   3. Create your admin account
+   4. Configure site settings
+
+{{- if .Values.networkPolicy.enabled }}
+🔒 Security:
+   ✓ Network Policy enabled
+   ✓ RBAC configured
+   ✓ Pod Security Standards applied
+{{- end }}
+
+📊 Common Operations:
+
+1. **Access WordPress CLI**:
+   ```bash
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     wp --allow-root <command>
+   ```
+
+2. **Update WordPress**:
+   ```bash
+   # Core update
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     wp --allow-root core update
+   
+   # Plugin updates
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     wp --allow-root plugin update --all
+   ```
+
+3. **Backup WordPress**:
+   ```bash
+   # Database backup
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     wp --allow-root db export /tmp/wordpress-backup.sql
+   
+   # Copy backup locally
+   kubectl cp {{ .Values.namespace | default .Release.Namespace }}/{{ .Release.Name }}-wordpress-<pod-id>:/tmp/wordpress-backup.sql ./wordpress-backup.sql
+   ```
+
+4. **Install Plugins**:
+   ```bash
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     wp --allow-root plugin install <plugin-name> --activate
+   ```
+
+📚 Recommended Plugins:
+   - W3 Total Cache (performance)
+   - Wordfence Security (security)
+   - UpdraftPlus (backup)
+   - Yoast SEO (SEO optimization)
+
+🚀 Performance Tips:
+   1. Enable caching plugin
+   2. Optimize images before upload
+   3. Use CDN for static assets
+   4. Minimize plugin usage
+   5. Regular database optimization
+
+🆘 Troubleshooting:
+   # Check pod status
+   kubectl get pods -n {{ .Values.namespace | default .Release.Namespace }} -l app.kubernetes.io/name={{ include "wordpress.name" . }}
+   
+   # View logs
+   kubectl logs -n {{ .Values.namespace | default .Release.Namespace }} -l app.kubernetes.io/name={{ include "wordpress.name" . }} --tail=100
+   
+   # Enable debug mode
+   kubectl exec -it -n {{ .Values.namespace | default .Release.Namespace }} deployment/{{ .Release.Name }}-wordpress -- \
+     sed -i "s/define( 'WP_DEBUG', false );/define( 'WP_DEBUG', true );/" /var/www/html/wp-config.php
+   
+   # Check events
+   kubectl get events -n {{ .Values.namespace | default .Release.Namespace }} --field-selector involvedObject.name={{ $fullName }}
+
+⚠️  Security Reminders:
+   1. Change default admin username
+   2. Use strong passwords
+   3. Keep WordPress and plugins updated
+   4. Regular backups
+   5. Monitor access logs
+
+For more information, visit: https://wordpress.org/support/

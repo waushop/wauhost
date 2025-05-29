@@ -1,17 +1,107 @@
-# Ignore log files
-*.log
-*.tmp
+# IDE and Editor files
+.idea/
+.vscode/
 *.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
-# Ignore Helm and Kubernetes generated files
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+
+# Log files
+*.log
+logs/
+
+# Helm related
 charts/*/charts/
-charts/*/tmp/
-charts/*/values.yaml
 charts/*/Chart.lock
-charts/*/crds/
+*.tgz
+.helmignore
 
-# Ignore sensitive files (should be managed via secrets)
-values/*.yaml
-!values/ingress.yaml
-!values/mysql.yaml
-!values/ghost.yaml
+# Kubernetes secrets and sensitive data
+*-secret.yaml
+*-secrets.yaml
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Terraform files (if used)
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+*.tfvars
+
+# Build artifacts
+dist/
+build/
+target/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go
+vendor/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Testing
+coverage/
+.coverage
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Documentation build
+docs/_build/
+site/
+
+# Backup files
+backup/
+backups/
+*.backup
+
+# Local development
+local/
+.local/
+
+# Override files (for local overrides)
+*-override.yaml
+*-override.yml
+values-local.yaml
+values-dev.yaml
+values-prod.yaml
+
+# But keep example files
+!*-example.yaml
+!values-example.yaml

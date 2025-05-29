@@ -1,0 +1,146 @@
+{{- $fullName := include "ghost.fullname" . -}}
+🎉 Ghost has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Values.namespace }}
+   Release:   {{ .Values.releaseName }}
+
+🌐 Access Ghost:
+   {{- if .Values.ingress.enabled }}
+   URL: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.host }}
+   {{- else }}
+   Port-forward: kubectl port-forward -n {{ .Values.namespace }} svc/{{ .Values.service.name }} {{ .Values.service.port }}:2368
+   URL: http://localhost:{{ .Values.service.port }}
+   {{- end }}
+   
+   Admin Panel: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.host }}/ghost
+
+🔐 Database Configuration:
+   Host: {{ .Values.database.host }}
+   Database: {{ .Values.database.database }}
+   User: {{ .Values.database.user }}
+   
+   {{- if .Values.externalSecrets.enabled }}
+   Database password is managed by External Secrets.
+   Secret Name: {{ $fullName }}-secrets
+   {{- else }}
+   ⚠️  WARNING: Using local database password. Enable External Secrets for production!
+   {{- end }}
+
+{{- if .Values.mail.enabled }}
+📧 Mail Configuration:
+   Service: {{ .Values.mail.options.service }}
+   From: {{ .Values.mail.from }}
+   
+   {{- if .Values.externalSecrets.enabled }}
+   Mail credentials are managed by External Secrets.
+   {{- else }}
+   ⚠️  WARNING: Using local mail credentials. Enable External Secrets for production!
+   {{- end }}
+{{- end }}
+
+💾 Storage:
+   {{- if .Values.pvc }}
+   PVC Size: {{ .Values.pvc.size }}
+   Mount Path: /var/lib/ghost/content
+   
+   Check PVC status:
+   kubectl get pvc -n {{ .Values.namespace }}
+   {{- end }}
+
+🔧 Ghost Admin Setup:
+   1. Visit {{ .Values.host }}/ghost
+   2. Create your admin account
+   3. Configure site settings
+   4. Start publishing!
+
+{{- if .Values.networkPolicy.enabled }}
+🔒 Security:
+   ✓ Network Policy enabled
+   ✓ RBAC configured
+   ✓ Pod Security Standards applied
+{{- end }}
+
+📊 Common Operations:
+
+1. **Access Ghost CLI**:
+   ```bash
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     ghost <command>
+   ```
+
+2. **Update Ghost**:
+   ```bash
+   # Check current version
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     ghost version
+   
+   # Update (requires image update in deployment)
+   kubectl set image deployment/{{ .Values.releaseName }} ghost=ghost:{{ .Values.image.tag }} \
+     -n {{ .Values.namespace }}
+   ```
+
+3. **Backup Ghost**:
+   ```bash
+   # Export content
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     ghost backup
+   
+   # Copy backup locally
+   kubectl cp {{ .Values.namespace }}/{{ .Values.releaseName }}-<pod-id>:/var/lib/ghost/content/data/backup.json ./ghost-backup.json
+   ```
+
+4. **Clear Cache**:
+   ```bash
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     ghost cache flush
+   ```
+
+📚 Configuration Tips:
+   1. Configure image storage (local or S3)
+   2. Set up membership features
+   3. Configure SEO settings
+   4. Enable newsletter functionality
+   5. Set up custom integrations
+
+🚀 Performance Optimization:
+   1. Use CDN for images
+   2. Enable caching headers
+   3. Optimize images before upload
+   4. Use lazy loading
+   5. Monitor site speed
+
+🆘 Troubleshooting:
+   # Check pod status
+   kubectl get pods -n {{ .Values.namespace }} -l app={{ .Values.releaseName }}
+   
+   # View logs
+   kubectl logs -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} --tail=100
+   
+   # Check Ghost status
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     ghost status
+   
+   # View configuration
+   kubectl exec -it -n {{ .Values.namespace }} deployment/{{ .Values.releaseName }} -- \
+     cat /var/lib/ghost/config.production.json
+   
+   # Check events
+   kubectl get events -n {{ .Values.namespace }} --field-selector involvedObject.name={{ .Values.releaseName }}
+
+⚠️  Maintenance Tips:
+   1. Regular backups before updates
+   2. Test updates in staging first
+   3. Monitor error logs
+   4. Keep themes updated
+   5. Review member exports regularly
+
+📈 Monitoring:
+   Ghost exposes metrics at /ghost/api/admin/site/
+   Configure monitoring to track:
+   - Page views
+   - Member signups
+   - Newsletter subscriptions
+   - API usage
+
+For more information, visit: https://ghost.org/docs/

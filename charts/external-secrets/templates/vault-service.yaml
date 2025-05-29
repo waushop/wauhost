@@ -1,0 +1,21 @@
+{{- if .Values.vault.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.vault.name }}
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  type: {{ .Values.vault.service.type }}
+  ports:
+    - port: {{ .Values.vault.service.port }}
+      targetPort: vault
+      protocol: TCP
+      name: vault
+  selector:
+    app.kubernetes.io/name: {{ .Values.vault.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

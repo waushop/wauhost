@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: minio
+description: A Helm chart for MinIO object storage
+type: application
+version: 0.1.0
+appVersion: "RELEASE.2024-01-16T16-07-38Z"

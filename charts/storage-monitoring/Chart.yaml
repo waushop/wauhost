@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: storage-monitoring
+description: A Helm chart for storage infrastructure monitoring
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

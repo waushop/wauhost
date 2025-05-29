@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  create-buckets.sh: |
+    #!/bin/sh
+    set -e
+    
+    # Wait for MinIO to be ready
+    until mc alias set minio http://{{ .Release.Name }}:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+      echo "Waiting for MinIO to be ready..."
+      sleep 5
+    done
+    
+    # Create buckets
+    {{- range .Values.minio.buckets }}
+    mc mb -p minio/{{ .name }} || true
+    {{- if .public }}
+    mc anonymous set download minio/{{ .name }}
+    {{- end }}
+    {{- if .lifecycle }}
+    mc ilm add --expiry-days {{ .lifecycle.expiryDays }} minio/{{ .name }}
+    {{- end }}
+    {{- end }}
+    
+    echo "Bucket configuration completed"

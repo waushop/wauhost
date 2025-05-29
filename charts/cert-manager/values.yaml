@@ -1,0 +1,57 @@
+# Default values for cert-manager
+# This is a YAML-formatted file.
+
+# Chart configuration
+nameOverride: ""
+fullnameOverride: ""
+
+# External Secrets Configuration
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStore: cluster-secret-store
+  secretStoreKind: ClusterSecretStore
+  remoteRefs:
+    email: wauhost/cert-manager/email
+
+# Cert-manager configuration
+certManager:
+  email: admin@example.com  # Will be overridden by external secret if enabled
+  acmeServer: https://acme-v02.api.letsencrypt.org/directory
+  ingressClass: traefik
+
+# Cluster issuer configuration
+clusterIssuer:
+  name: letsencrypt
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod configuration
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# Resource configuration
+resources: {}
+
+# Node scheduling
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Image configuration (for patch job)
+image:
+  repository: bitnami/kubectl
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []

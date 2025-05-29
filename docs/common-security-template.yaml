@@ -1,0 +1,43 @@
+# Common Security Configuration Template
+# Copy these values to each chart's values.yaml and adjust as needed
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: true
+  # Add allowed namespaces based on chart requirements
+  allowedNamespaces: []
+
+# Pod Security Policy
+podSecurityPolicy:
+  enabled: false  # Deprecated in K8s 1.21+, use Pod Security Standards instead
+
+# Pod Security Standards
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # Set to true where possible
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+# Security Scanning Annotations
+podAnnotations:
+  # AppArmor profile
+  container.apparmor.security.beta.kubernetes.io/container-name: runtime/default
+  # Seccomp profile
+  seccomp.security.alpha.kubernetes.io/pod: runtime/default
+  # Security scanning
+  security.alpha.kubernetes.io/pod-security-policy: restricted

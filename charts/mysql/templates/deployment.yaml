@@ -1,17 +1,20 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql
+  name: {{ include "mysql.fullname" . }}
   namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mysql
+      {{- include "mysql.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: mysql
+        {{- include "mysql.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - name: mysql
@@ -37,4 +40,4 @@ spec:
       volumes:
         - name: mysql-data
           persistentVolumeClaim:
-            claimName: mysql-pvc
+            claimName: {{ include "mysql.fullname" . }}-data

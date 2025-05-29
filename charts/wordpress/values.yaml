@@ -1,0 +1,56 @@
+# External Secrets Configuration
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStore: cluster-secret-store
+  secretStoreKind: ClusterSecretStore
+  remoteRefs:
+    dbPassword: wauhost/wordpress/db-password
+
+wordpress:
+  replicaCount: 1
+
+  image:
+    repository: wordpress
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
+    enabled: true
+    className: "traefik"
+    host: agrofort.ee
+    tls: true
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 2Gi  # Reduced from 10Gi to 2Gi
+
+  env:  # Moved MySQL settings under `wordpress.env`
+    WORDPRESS_DB_HOST: "mysql.mysql.svc.cluster.local"  # Use existing MySQL instance
+    WORDPRESS_DB_USER: "agrofort"
+    # Password managed by External Secrets
+    # Set this only for development/testing when externalSecrets.enabled=false
+    WORDPRESS_DB_PASSWORD: ""  # Override with external secret
+    WORDPRESS_DB_NAME: "agrofort"
+
+mysql:
+  enabled: false  # Disabling MySQL deployment to use existing one
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: false
+
+# Node selector, affinity, and tolerations
+nodeSelector: {}
+affinity: {}
+tolerations: []

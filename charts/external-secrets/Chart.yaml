@@ -1,0 +1,23 @@
+---
+apiVersion: v2
+name: external-secrets
+description: External Secrets Operator configuration for wauhost
+type: application
+version: 0.1.0
+appVersion: "0.9.11"
+# This chart provides configuration for External Secrets Operator
+# The operator itself should be installed separately using:
+# helm install external-secrets external-secrets/external-secrets -n external-secrets-system
+#
+# dependencies:
+#   - name: external-secrets
+#     version: "0.9.11"
+#     repository: https://charts.external-secrets.io
+keywords:
+  - secrets
+  - external-secrets
+  - vault
+  - aws-secrets-manager
+maintainers:
+  - name: waushop
+    email: siim@waushop.ee
