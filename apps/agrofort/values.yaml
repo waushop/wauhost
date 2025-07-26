@@ -56,14 +56,14 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt"
   hosts:
-    - host: v2.agrofort.ee
+    - host: agrofort.ee
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: agrofort-v2-tls
+    - secretName: agrofort-tls
       hosts:
-        - v2.agrofort.ee
+        - agrofort.ee
 
 resources:
   limits:
