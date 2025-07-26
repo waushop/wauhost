@@ -91,4 +91,4 @@ env:
 
 # Redirect configuration
 redirect:
-  enabled: true
+  enabled: false
