@@ -1,0 +1,39 @@
+{{- if .Values.redirect.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "agrofort.fullname" . }}-redirect
+  labels:
+    {{- include "agrofort.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-v2@kubernetescrd
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - v2.agrofort.ee
+      secretName: agrofort-v2-tls
+  rules:
+    - host: v2.agrofort.ee
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "agrofort.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-v2
+  namespace: default
+spec:
+  redirectRegex:
+    regex: ^https://v2\.agrofort\.ee/(.*)
+    replacement: https://agrofort.ee/${1}
+    permanent: true
+{{- end }}
