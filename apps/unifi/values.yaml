@@ -21,6 +21,8 @@ persistence:
     enabled: true
     size: 20Gi
     storageClass: longhorn
+    annotations:
+      volume.beta.kubernetes.io/storage-class: "longhorn"
 
 # Service configuration (NO LoadBalancer costs)
 service:
