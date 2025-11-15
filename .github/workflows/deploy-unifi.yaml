@@ -96,8 +96,8 @@ jobs:
 
       - name: Verify cluster connectivity
         run: |
-          kubectl cluster-info
           kubectl get nodes
+          kubectl get componentstatuses
 
       - name: Check existing deployment
         run: |
