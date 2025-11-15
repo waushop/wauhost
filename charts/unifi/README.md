@@ -53,8 +53,10 @@ UniFi Network Controller Helm Chart
 | networkPolicy.enabled | bool | `false` |  |
 | networkPolicy.ingress | list | `[]` |  |
 | nodeSelector | object | `{}` |  |
+| persistence.data.annotations | object | `{}` |  |
 | persistence.data.enabled | bool | `true` |  |
 | persistence.data.size | string | `"20Gi"` |  |
+| persistence.data.storageClass | string | `""` |  |
 | podAnnotations | object | `{}` |  |
 | podDisruptionBudget.enabled | bool | `false` |  |
 | podDisruptionBudget.minAvailable | int | `1` |  |
@@ -81,13 +83,13 @@ UniFi Network Controller Helm Chart
 | service.main.ports.controller.protocol | string | `"TCP"` |  |
 | service.main.ports.http.enabled | bool | `true` |  |
 | service.main.ports.http.port | int | `8443` |  |
-| service.main.ports.http.protocol | string | `"HTTPS"` |  |
+| service.main.ports.http.protocol | string | `"TCP"` |  |
 | service.main.ports.portal-http.enabled | bool | `false` |  |
 | service.main.ports.portal-http.port | int | `8880` |  |
 | service.main.ports.portal-http.protocol | string | `"HTTP"` |  |
 | service.main.ports.portal-https.enabled | bool | `false` |  |
 | service.main.ports.portal-https.port | int | `8843` |  |
-| service.main.ports.portal-https.protocol | string | `"HTTPS"` |  |
+| service.main.ports.portal-https.protocol | string | `"TCP"` |  |
 | service.main.ports.speedtest.enabled | bool | `true` |  |
 | service.main.ports.speedtest.port | int | `6789` |  |
 | service.main.ports.speedtest.protocol | string | `"TCP"` |  |
