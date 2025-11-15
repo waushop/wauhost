@@ -166,22 +166,50 @@ jobs:
           echo "Deployment command completed. Checking results..."
           kubectl get all -n unifi
 
+          # Check if Helm command actually succeeded
+          echo "=== Checking if Helm release was created ==="
+          helm list -n unifi
+
+          # Check deployment logs if it exists
+          if kubectl get deployment -n unifi unifi &>/dev/null; then
+            echo "=== Deployment exists, checking recent events ==="
+            kubectl get events -n unifi --sort-by='.lastTimestamp' | tail -10
+          else
+            echo "=== No deployment found - checking what went wrong ==="
+            kubectl get all -n unifi
+            kubectl get events -n unifi --sort-by='.lastTimestamp' | tail -20
+          fi
+
       - name: Verify deployment
         run: |
-          echo "Checking pod status..."
-          kubectl get pods -n unifi -l app.kubernetes.io/name=unifi -w &
-          KUBECTL_PID=$!
+          echo "Checking deployment status..."
 
-          # Wait for pods to be ready (timeout 5 minutes)
-          timeout 300 bash -c 'until kubectl get pods -n unifi -l app.kubernetes.io/name=unifi -o jsonpath="{.items[0].status.phase}" | grep -q "Running"; do sleep 10; done'
+          # Check if any resources exist
+          echo "=== Checking all resources in unifi namespace ==="
+          kubectl get all -n unifi
 
-          # Stop the watch process
-          kill $KUBECTL_PID 2>/dev/null || true
+          # Check Helm deployment status
+          echo "=== Helm release status ==="
+          helm status unifi -n unifi || echo "No Helm release found"
 
-          # Final status check
-          kubectl get pods -n unifi -l app.kubernetes.io/name=unifi
-          kubectl get services -n unifi
-          kubectl get ingress -n unifi || echo "No ingress found"
+          # Check pods specifically
+          echo "=== Pod status ==="
+          kubectl get pods -n unifi -o wide || echo "No pods found"
+
+          # Check if pods exist before waiting for them
+          POD_COUNT=$(kubectl get pods -n unifi -l app.kubernetes.io/name=unifi --no-headers | wc -l)
+          echo "Found $POD_COUNT UniFi pods"
+
+          if [ "$POD_COUNT" -gt 0 ]; then
+            echo "Waiting for pods to be ready..."
+            # Wait for pods to be ready (timeout 5 minutes)
+            kubectl wait --for=condition=ready pod -n unifi -l app.kubernetes.io/name=unifi --timeout=300s || echo "Pods not ready within timeout"
+          else
+            echo "No UniFi pods found - checking deployment issues"
+            kubectl get events -n unifi --sort-by='.lastTimestamp' | tail -10
+            kubectl get pvc -n unifi
+            kubectl describe deployment -n unifi || echo "No deployment found"
+          fi
 
       - name: Get UniFi Controller URL
         if: github.ref == 'refs/heads/main'
