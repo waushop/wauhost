@@ -15,4 +15,5 @@ sources:
   - https://github.com/k8s-at-home/charts
 maintainers:
   - name: wauhost
-    email: admin@wauhost.com
+    email: siim@waushop.ee
+icon: https://www.ui.com/favicon.ico
