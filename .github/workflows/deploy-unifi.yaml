@@ -132,21 +132,39 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG }}
         run: |
+          echo "Starting deployment..."
+          echo "UPGRADE_EXISTS: ${{ env.UPGRADE_EXISTS }}"
+
+          # Test cluster connectivity first
+          kubectl get nodes -v=1
+          kubectl get namespaces -v=1
+
           if [ "${{ env.UPGRADE_EXISTS }}" = "true" ]; then
             echo "Upgrading existing deployment..."
             helm upgrade unifi charts/unifi \
               --namespace unifi \
               --values apps/unifi/values.yaml \
-              --wait \
-              --timeout 10m
+              --dry-run
+            echo "Dry-run successful, proceeding with actual upgrade..."
+            helm upgrade unifi charts/unifi \
+              --namespace unifi \
+              --values apps/unifi/values.yaml \
+              --timeout 5m
           else
             echo "Installing new deployment..."
             helm install unifi charts/unifi \
               --namespace unifi \
               --values apps/unifi/values.yaml \
-              --wait \
-              --timeout 10m
+              --dry-run
+            echo "Dry-run successful, proceeding with actual install..."
+            helm install unifi charts/unifi \
+              --namespace unifi \
+              --values apps/unifi/values.yaml \
+              --timeout 5m
           fi
+
+          echo "Deployment command completed. Checking results..."
+          kubectl get all -n unifi
 
       - name: Verify deployment
         run: |
