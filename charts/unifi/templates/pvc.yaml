@@ -12,7 +12,7 @@ metadata:
   {{- end }}
 spec:
   accessModes:
-    {{- .Values.persistence.data.accessMode | default "ReadWriteOnce" | quote }}
+    - {{- .Values.persistence.data.accessMode | default "ReadWriteOnce" | quote }}
   storageClassName: {{ .Values.persistence.data.storageClass | quote }}
   resources:
     requests:

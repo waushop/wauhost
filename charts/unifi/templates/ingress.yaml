@@ -33,7 +33,7 @@ spec:
             {{- end }}
             backend:
               service:
-                name: {{ $.Release.Name }}-unifi
+                name: {{ include "unifi.fullname" $ }}
                 port:
                   name: http
           {{- end }}

@@ -7,22 +7,18 @@ Your UniFi Controller is available at:
 https://{{ .host }}
 {{- end }}
 
-{{- else if .Values.service.main.type == "LoadBalancer" }}
+{{- else if eq .Values.service.main.type "LoadBalancer" }}
 
 Your UniFi Controller is available at:
-{{- if .Values.service.main.loadBalancerIP }}
-https://{{ .Values.service.main.loadBalancerIP }}:{{ .Values.service.main.ports.http.port }}
-{{- else }}
 Get the external IP by running:
 kubectl get svc {{ include "unifi.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-Then access: https://<EXTERNAL_IP>:{{ .Values.service.main.ports.http.port }}
-{{- end }}
+Then access: https://<EXTERNAL_IP>:8443
 
 {{- else }}
 
 To access your UniFi Controller, run:
-kubectl port-forward svc/{{ include "unifi.fullname" . }} {{ .Values.service.main.ports.http.port }}:{{ .Values.service.main.ports.http.port }}
-Then open: https://localhost:{{ .Values.service.main.ports.http.port }}
+kubectl port-forward svc/{{ include "unifi.fullname" . }} 8443:8443
+Then open: https://localhost:8443
 
 {{- end }}
 
