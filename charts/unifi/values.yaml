@@ -1,0 +1,202 @@
+---
+# Default values for unifi.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: jacobalberty/unifi
+  pullPolicy: IfNotPresent
+  tag: "v7.1.68"
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 999
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 999
+  runAsGroup: 999
+
+# Service configuration
+service:
+  main:
+    type: ClusterIP
+    ports:
+      # Web UI + API (HTTPS)
+      http:
+        enabled: true
+        port: 8443
+        protocol: HTTPS
+      # Controller device command/control
+      controller:
+        enabled: true
+        port: 8080
+        protocol: TCP
+      # Speed test functionality
+      speedtest:
+        enabled: true
+        port: 6789
+        protocol: TCP
+      # Captive Portal (disabled by default)
+      portal-http:
+        enabled: false
+        port: 8880
+        protocol: HTTP
+      portal-https:
+        enabled: false
+        port: 8843
+        protocol: HTTPS
+
+  # Separate UDP service for LoadBalancer (optional)
+  udp:
+    enabled: false
+    type: LoadBalancer
+    loadBalancerIP: ""
+    ports:
+      stun:
+        enabled: true
+        port: 3478
+        protocol: UDP
+      syslog:
+        enabled: true
+        port: 5514
+        protocol: UDP
+      discovery:
+        enabled: true
+        port: 10001
+        protocol: UDP
+
+# Ingress configuration
+ingress:
+  main:
+    enabled: false
+    annotations: {}
+      # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: unifi.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: unifi-tls
+    #    hosts:
+    #      - unifi.local
+
+# Resource limits and requests
+resources:
+  requests:
+    memory: 1Gi
+    cpu: 500m
+  limits:
+    memory: 2Gi
+    cpu: 1000m
+
+# Horizontal Pod Autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Persistence configuration
+persistence:
+  data:
+    enabled: true
+    # storageClass: ""
+    # accessMode: ReadWriteOnce
+    size: 20Gi
+    # annotations: {}
+
+# Environment variables
+env:
+  TZ: "UTC"
+  RUNAS_UID0: "false"
+  UNIFI_UID: "999"
+  UNIFI_GID: "999"
+  JVM_INIT_HEAP_SIZE: ""
+  JVM_MAX_HEAP_SIZE: "1024M"
+  UNIFI_STDOUT: "true"
+  # External MongoDB (if needed)
+  # DB_URI: mongodb://unifi-mongodb:27017/unifi
+  # STATDB_URI: mongodb://unifi-mongodb:27017/unifi_stat
+  # DB_NAME: unifi
+
+# Additional volumes
+volumes: []
+
+# Additional volume mounts
+volumeMounts: []
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /status
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /status
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Startup probe
+startupProbe:
+  httpGet:
+    path: /status
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Additional labels
+podLabels: {}
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

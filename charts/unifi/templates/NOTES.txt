@@ -1,0 +1,36 @@
+UniFi Network Controller has been deployed successfully!
+
+{{- if .Values.ingress.main.enabled }}
+
+Your UniFi Controller is available at:
+{{- range .Values.ingress.main.hosts }}
+https://{{ .host }}
+{{- end }}
+
+{{- else if .Values.service.main.type == "LoadBalancer" }}
+
+Your UniFi Controller is available at:
+{{- if .Values.service.main.loadBalancerIP }}
+https://{{ .Values.service.main.loadBalancerIP }}:{{ .Values.service.main.ports.http.port }}
+{{- else }}
+Get the external IP by running:
+kubectl get svc {{ include "unifi.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+Then access: https://<EXTERNAL_IP>:{{ .Values.service.main.ports.http.port }}
+{{- end }}
+
+{{- else }}
+
+To access your UniFi Controller, run:
+kubectl port-forward svc/{{ include "unifi.fullname" . }} {{ .Values.service.main.ports.http.port }}:{{ .Values.service.main.ports.http.port }}
+Then open: https://localhost:{{ .Values.service.main.ports.http.port }}
+
+{{- end }}
+
+Default credentials:
+- Username: ubnt
+- Password: You'll need to set this on first login
+
+For more information, visit: https://www.ui.com/
+
+To check the status of your deployment, run:
+kubectl get pods -l app.kubernetes.io/name={{ include "unifi.name" . }} -l app.kubernetes.io/instance={{ .Release.Name }}

@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "unifi.fullname" . }}
+  labels:
+    {{- include "unifi.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.main.type }}
+  ports:
+    {{- range $name, $config := .Values.service.main.ports }}
+    {{- if $config.enabled }}
+    - name: {{ $name }}
+      port: {{ $config.port }}
+      targetPort: {{ $config.port }}
+      protocol: {{ $config.protocol }}
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "unifi.selectorLabels" . | nindent 4 }}
+
+{{- if .Values.service.udp.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "unifi.fullname" . }}-udp
+  labels:
+    {{- include "unifi.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.udp.type }}
+  {{- if .Values.service.udp.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.udp.loadBalancerIP }}
+  {{- end }}
+  ports:
+    {{- range $name, $config := .Values.service.udp.ports }}
+    {{- if $config.enabled }}
+    - name: {{ $name }}
+      port: {{ $config.port }}
+      targetPort: {{ $config.port }}
+      protocol: {{ $config.protocol }}
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "unifi.selectorLabels" . | nindent 4 }}
+{{- end }}

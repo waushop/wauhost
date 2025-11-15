@@ -1,0 +1,235 @@
+---
+name: Deploy UniFi Controller
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'charts/unifi/**'
+      - 'apps/unifi/**'
+      - '.github/workflows/deploy-unifi.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'charts/unifi/**'
+      - 'apps/unifi/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+env:
+  HELM_VERSION: "v3.13.0"
+  KUBECTL_VERSION: "v1.28.0"
+
+jobs:
+  lint:
+    name: Lint Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install helm-docs
+        run: |
+          wget -O helm-docs.tar.gz https://github.com/norwoodj/helm-docs/releases/download/v1.11.0/helm-docs_1.11.0_Linux_x86_64.tar.gz
+          tar -xzf helm-docs.tar.gz helm-docs
+          sudo mv helm-docs /usr/local/bin
+
+      - name: Run helm-docs
+        run: |
+          helm-docs --chart-search-root=charts/unifi
+          git diff --exit-code
+
+      - name: Add Helm repos
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Helm template test
+        run: |
+          helm template unifi charts/unifi --values apps/unifi/values.yaml --dry-run
+
+      - name: Helm lint
+        run: |
+          helm lint charts/unifi --values apps/unifi/values.yaml
+
+  deploy:
+    name: Deploy to Hetzner Cluster
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Verify cluster connectivity
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Check existing deployment
+        run: |
+          if helm status unifi -n unifi 2>/dev/null; then
+            echo "Existing deployment found"
+            echo "UPGRADE_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "No existing deployment"
+            echo "UPGRADE_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace unifi --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy UniFi Controller
+        run: |
+          if [ "${{ env.UPGRADE_EXISTS }}" = "true" ]; then
+            echo "Upgrading existing deployment..."
+            helm upgrade unifi charts/unifi \
+              --namespace unifi \
+              --values apps/unifi/values.yaml \
+              --wait \
+              --timeout 10m
+          else
+            echo "Installing new deployment..."
+            helm install unifi charts/unifi \
+              --namespace unifi \
+              --values apps/unifi/values.yaml \
+              --wait \
+              --timeout 10m
+          fi
+
+      - name: Verify deployment
+        run: |
+          echo "Checking pod status..."
+          kubectl get pods -n unifi -l app.kubernetes.io/name=unifi -w &
+          KUBECTL_PID=$!
+
+          # Wait for pods to be ready (timeout 5 minutes)
+          timeout 300 bash -c 'until kubectl get pods -n unifi -l app.kubernetes.io/name=unifi -o jsonpath="{.items[0].status.phase}" | grep -q "Running"; do sleep 10; done'
+
+          # Stop the watch process
+          kill $KUBECTL_PID 2>/dev/null || true
+
+          # Final status check
+          kubectl get pods -n unifi -l app.kubernetes.io/name=unifi
+          kubectl get services -n unifi
+          kubectl get ingress -n unifi || echo "No ingress found"
+
+      - name: Get UniFi Controller URL
+        if: github.ref == 'refs/heads/main'
+        run: |
+          UNIFI_URL="https://unifi.waushop.ee"
+          echo "🌐 UniFi Controller will be available at: $UNIFI_URL"
+          echo ""
+          echo "Default credentials:"
+          echo "Username: ubnt"
+          echo "Password: Set on first login"
+          echo ""
+          echo "⚠️  Note: It may take a few minutes for DNS to propagate"
+          echo "⚠️  Note: UniFi Controller may take 3-5 minutes to fully start on first run"
+
+      - name: Check deployment health
+        run: |
+          echo "Waiting for UniFi Controller to be healthy..."
+
+          # Wait for the pod to be ready
+          kubectl wait --for=condition=ready pod -n unifi -l app.kubernetes.io/name=unifi --timeout=300s
+
+          # Check if the service responds to health checks
+          sleep 60  # Give UniFi time to start
+
+          echo "✅ Deployment completed successfully!"
+          echo ""
+          echo "📊 Deployment Summary:"
+          kubectl get pods -n unifi -o wide
+          kubectl get services -n unifi
+          kubectl get ingress -n unifi || echo "Ingress not configured or not ready"
+
+      - name: Cleanup old Helm releases
+        run: |
+          # Keep only the last 3 releases for rollback capability
+          helm history unifi -n unifi --output json | jq -r 'length as $len | .[] | select(.revision <= ($len - 3)) | .revision' | \
+          xargs -r -I {} helm uninstall unifi --namespace unifi --revision {} || true
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Check rollback target
+        run: |
+          echo "Checking for previous successful deployment..."
+          HELM_HISTORY=$(helm history unifi -n unifi --output json 2>/dev/null || echo '[]')
+          PREV_SUCCESSFUL=$(echo "$HELM_HISTORY" | jq -r '.[] | select(.status == "deployed") | .revision' | tail -2 | head -1)
+
+          if [ -n "$PREV_SUCCESSFUL" ] && [ "$PREV_SUCCESSFUL" != "" ]; then
+            echo "Previous successful deployment found: revision $PREV_SUCCESSFUL"
+            echo "PREV_REVISION=$PREV_SUCCESSFUL" >> $GITHUB_ENV
+          else
+            echo "No previous successful deployment found for rollback"
+            exit 1
+          fi
+
+      - name: Rollback deployment
+        if: env.PREV_REVISION != ''
+        run: |
+          echo "Rolling back to revision ${{ env.PREV_REVISION }}..."
+          helm rollback unifi ${{ env.PREV_REVISION }} --namespace unifi --wait --timeout 5m
+          echo "✅ Rollback completed successfully"
+
+      - name: Notify rollback
+        if: env.PREV_REVISION != ''
+        run: |
+          echo "🔄 UniFi Controller has been rolled back to previous version"
+          echo "🌐 Access URL: https://unifi.waushop.ee"
+          echo ""
+          echo "Please check the deployment status and fix any issues before redeploying"
