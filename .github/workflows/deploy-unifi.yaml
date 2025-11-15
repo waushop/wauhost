@@ -93,13 +93,26 @@ jobs:
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
+          echo "KUBECONFIG contents:"
+          cat $HOME/.kube/config
+          echo "KUBECONFIG file size: $(wc -c $HOME/.kube/config)"
 
       - name: Verify cluster connectivity
         run: |
-          kubectl get nodes
-          kubectl get componentstatuses
+          export KUBECONFIG=$HOME/.kube/config
+          echo "Using KUBECONFIG: $KUBECONFIG"
+          echo "Testing basic connectivity..."
+          kubectl config current-context
+          kubectl config view --minify
+          kubectl get nodes --v=6
+
+      - name: Set KUBECONFIG for all steps
+        run: |
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
 
       - name: Check existing deployment
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
         run: |
           if helm status unifi -n unifi 2>/dev/null; then
             echo "Existing deployment found"
@@ -110,10 +123,14 @@ jobs:
           fi
 
       - name: Create namespace
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
         run: |
           kubectl create namespace unifi --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy UniFi Controller
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
         run: |
           if [ "${{ env.UPGRADE_EXISTS }}" = "true" ]; then
             echo "Upgrading existing deployment..."

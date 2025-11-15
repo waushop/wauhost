@@ -34,11 +34,11 @@ service:
   main:
     type: ClusterIP
     ports:
-      # Web UI + API (HTTPS)
+      # Web UI + API (HTTPS over TCP)
       http:
         enabled: true
         port: 8443
-        protocol: HTTPS
+        protocol: TCP
       # Controller device command/control
       controller:
         enabled: true
@@ -57,7 +57,7 @@ service:
       portal-https:
         enabled: false
         port: 8843
-        protocol: HTTPS
+        protocol: TCP
 
   # Separate UDP service for LoadBalancer (optional)
   udp:
@@ -126,10 +126,9 @@ affinity: {}
 persistence:
   data:
     enabled: true
-    # storageClass: ""
-    # accessMode: ReadWriteOnce
+    storageClass: ""
     size: 20Gi
-    # annotations: {}
+    annotations: {}
 
 # Environment variables
 env:
