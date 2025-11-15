@@ -15,14 +15,12 @@ resources:
     memory: 2Gi
     cpu: 1000m
 
-# Persistence with FREE Longhorn storage
+# Persistence with FREE local-path storage
 persistence:
   data:
     enabled: true
     size: 20Gi
-    storageClass: longhorn
-    annotations:
-      volume.beta.kubernetes.io/storage-class: "longhorn"
+    storageClass: local-path
 
 # Service configuration (NO LoadBalancer costs)
 service:
