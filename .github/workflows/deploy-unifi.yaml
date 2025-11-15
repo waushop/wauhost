@@ -114,13 +114,26 @@ jobs:
         env:
           KUBECONFIG: ${{ env.KUBECONFIG }}
         run: |
-          if helm status unifi -n unifi 2>/dev/null; then
-            echo "Existing deployment found"
-            echo "UPGRADE_EXISTS=true" >> $GITHUB_ENV
+          echo "Checking for existing deployments..."
+
+          # Check if namespace exists
+          if kubectl get namespace unifi &>/dev/null; then
+            echo "Namespace unifi exists"
+
+            # Check for Helm releases
+            if helm status unifi -n unifi &>/dev/null; then
+              echo "Existing Helm deployment found"
+              echo "UPGRADE_EXISTS=true" >> $GITHUB_ENV
+            else
+              echo "Namespace exists but no Helm deployment"
+              echo "UPGRADE_EXISTS=false" >> $GITHUB_ENV
+            fi
           else
-            echo "No existing deployment"
+            echo "Namespace unifi does not exist"
             echo "UPGRADE_EXISTS=false" >> $GITHUB_ENV
           fi
+
+          echo "Final UPGRADE_EXISTS decision: ${{ env.UPGRADE_EXISTS }}"
 
       - name: Create namespace
         env:
