@@ -35,19 +35,19 @@ ingress:
   main:
     enabled: true
     annotations:
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
       cert-manager.io/cluster-issuer: "letsencrypt"
-      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      traefik.ingress.kubernetes.io/router.tls: "true"
     hosts:
       - host: unifi.waushop.ee
         paths:
           - path: /
             pathType: Prefix
+            service:
+              name: unifi
+              port:
+                number: 8080
     tls:
-      - secretName: unifi-waushop-tls
+      - secretName: unifi-tls
         hosts:
           - unifi.waushop.ee
 

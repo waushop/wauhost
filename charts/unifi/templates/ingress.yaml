@@ -35,7 +35,7 @@ spec:
               service:
                 name: {{ include "unifi.fullname" $ }}
                 port:
-                  name: http
+                  number: 8080
           {{- end }}
     {{- end }}
 {{- end }}
