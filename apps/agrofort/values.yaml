@@ -60,10 +60,15 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+    - host: www.agrofort.ee
+      paths:
+        - path: /
+          pathType: Prefix
   tls:
     - secretName: agrofort-tls
       hosts:
         - agrofort.ee
+        - www.agrofort.ee
 
 resources:
   limits:

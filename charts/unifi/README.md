@@ -1,274 +1,121 @@
-# UniFi Controller Helm Chart
-
-This Helm chart deploys the UniFi Network Controller to Kubernetes. The UniFi Controller allows you to manage UniFi network devices (Access Points, Switches, Routers, etc.) from a central web interface.
-
-## Features
-
-- 🚀 Easy deployment to any Kubernetes cluster
-- 🔒 Security-focused configuration (non-root execution, HTTPS support)
-- 📊 Built-in monitoring and health checks
-- 💾 Persistent storage for configuration and data
-- 🌐 Ingress support for external access
-- 🔄 Horizontal Pod Autoscaling support
-- 🛡️ Network policy support
-- 📋 Comprehensive configuration options
-
-## Prerequisites
-
-- Kubernetes 1.19+
-- Helm 3.0+
-- Persistent storage (ReadWriteOnce)
-- (Optional) Ingress controller for external access
-- (Optional) LoadBalancer support for UDP services
-
-## Installation
-
-### Add the repository (if not already added)
-
-```bash
-helm repo add wauhost https://charts.wauhost.com
-helm repo update
-```
-
-### Install the chart
-
-```bash
-helm install unifi wauhost/unifi
-```
-
-### Install with custom values
-
-```bash
-helm install unifi wauhost/unifi -f values.yaml
-```
-
-## Configuration
-
-The following table lists the configurable parameters of the UniFi chart and their default values.
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `image.repository` | UniFi image repository | `jacobalberty/unifi` |
-| `image.tag` | UniFi image tag | `v7.1.68` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `replicaCount` | Number of UniFi replicas | `1` |
-| `resources.requests.memory` | Memory request | `1Gi` |
-| `resources.requests.cpu` | CPU request | `500m` |
-| `resources.limits.memory` | Memory limit | `2Gi` |
-| `resources.limits.cpu` | CPU limit | `1000m` |
-| `persistence.data.enabled` | Enable persistent storage | `true` |
-| `persistence.data.size` | Persistent volume size | `20Gi` |
-| `persistence.data.storageClass` | Storage class for PVC | `""` (default) |
-| `service.main.type` | Service type | `ClusterIP` |
-| `service.udp.enabled` | Enable UDP LoadBalancer service | `false` |
-| `ingress.main.enabled` | Enable Ingress | `false` |
-| `ingress.main.hosts` | Ingress hosts | `[]` |
-| `env.TZ` | Timezone | `UTC` |
-| `env.JVM_MAX_HEAP_SIZE` | Maximum JVM heap size | `1024M` |
-
-### Persistence
-
-The UniFi Controller requires persistent storage for configuration and data. By default, a 20Gi PVC is created:
-
-```yaml
-persistence:
-  data:
-    enabled: true
-    size: 20Gi
-    storageClass: fast-ssd  # Optional: specify your storage class
-```
-
-### Ingress Configuration
-
-To expose the UniFi Controller externally via Ingress:
-
-```yaml
-ingress:
-  main:
-    enabled: true
-    annotations:
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-      cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    hosts:
-      - host: unifi.example.com
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: unifi-tls
-        hosts:
-          - unifi.example.com
-```
-
-### UDP Services
-
-For device discovery and communication, enable the UDP LoadBalancer service:
-
-```yaml
-service:
-  udp:
-    enabled: true
-    type: LoadBalancer
-    loadBalancerIP: 192.168.1.100  # Optional static IP
-```
-
-### Resource Management
-
-Adjust resources based on your network size:
-
-```yaml
-# Small networks (1-10 devices)
-resources:
-  requests:
-    memory: 512Mi
-    cpu: 250m
-  limits:
-    memory: 1Gi
-    cpu: 500m
-
-# Medium networks (10-50 devices)
-resources:
-  requests:
-    memory: 1Gi
-    cpu: 500m
-  limits:
-    memory: 2Gi
-    cpu: 1000m
-
-# Large networks (50+ devices)
-resources:
-  requests:
-    memory: 2Gi
-    cpu: 1000m
-  limits:
-    memory: 4Gi
-    cpu: 2000m
-```
-
-## Port Configuration
-
-The UniFi Controller uses multiple ports for different functions:
-
-| Port | Protocol | Purpose | Service |
-|------|----------|---------|---------|
-| 8443 | HTTPS | Web UI & API | main |
-| 8080 | TCP | Device communication | main |
-| 6789 | TCP | Speed test | main |
-| 3478 | UDP | STUN/Discovery | udp |
-| 5514 | UDP | Syslog | udp |
-| 10001 | UDP | Device discovery | udp |
-| 8880 | HTTP | Captive Portal (optional) | main |
-| 8843 | HTTPS | Captive Portal (optional) | main |
-
-## Security Considerations
-
-1. **Non-root execution**: Container runs as non-root user (UID/GID 999)
-2. **HTTPS only**: Always access via HTTPS for security
-3. **Network policies**: Consider enabling network policies
-4. **RBAC**: Service account permissions are minimal
-5. **Regular updates**: Keep UniFi Controller updated
-
-## Accessing UniFi Controller
-
-After deployment:
-
-1. **With Ingress enabled**: Access via `https://unifi.yourdomain.com`
-2. **With LoadBalancer**: Access via `https://<external-ip>:8443`
-3. **With ClusterIP**: Use port-forwarding:
-   ```bash
-   kubectl port-forward svc/unifi 8443:8443
-   # Then access: https://localhost:8443
-   ```
-
-Default credentials:
-- Username: `ubnt`
-- Password: Set on first login
-
-## Upgrading
-
-To upgrade the deployment:
-
-```bash
-helm upgrade unifi wauhost/unifi -f values.yaml
-```
-
-For major version upgrades, consider backing up your data first.
-
-## Backup and Restore
-
-### Backup
-
-The UniFi data is stored in the persistent volume. To create backups:
-
-```bash
-# Create a backup of the UniFi data
-kubectl exec -it deployment/unifi -- tar -czf /tmp/unifi-backup.tar.gz -C /unifi .
-
-# Copy the backup to your local machine
-kubectl cp deployment/unifi:/tmp/unifi-backup.tar.gz ./unifi-backup.tar.gz
-```
-
-### Restore
-
-```bash
-# Copy backup to the pod
-kubectl cp ./unifi-backup.tar.gz deployment/unifi:/tmp/unifi-backup.tar.gz
-
-# Stop UniFi service
-kubectl scale deployment unifi --replicas=0
-
-# Restore data
-kubectl exec -it deployment/unifi -- tar -xzf /tmp/unifi-backup.tar.gz -C /unifi
-
-# Start UniFi service
-kubectl scale deployment unifi --replicas=1
-```
-
-## Monitoring
-
-The chart includes built-in health checks:
-
-- **Liveness Probe**: Ensures the UniFi process is running
-- **Readiness Probe**: Ensures the UniFi service is ready to accept connections
-- **Startup Probe**: Handles initial startup delays
-
-Monitor the deployment:
-
-```bash
-kubectl get pods -l app.kubernetes.io/name=unifi
-kubectl logs deployment/unifi -f
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Controller won't start**: Check resource limits and persistence
-2. **Devices can't connect**: Ensure UDP ports are accessible
-3. **High memory usage**: Adjust JVM heap size in `env.JVM_MAX_HEAP_SIZE`
-
-### Logs
-
-View UniFi logs:
-
-```bash
-kubectl logs deployment/unifi -f
-```
-
-### Debug Mode
-
-Enable debug logging by adding to `env`:
-
-```yaml
-env:
-  UNIFI_STDOUT: "true"
-  LOG_LEVEL: "DEBUG"
-```
-
-## Contributing
-
-Feel free to submit issues and enhancement requests!
-
-## License
-
-This chart is licensed under the Apache 2.0 License.
+# unifi
+
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.1.68](https://img.shields.io/badge/AppVersion-7.1.68-informational?style=flat-square)
+
+UniFi Network Controller Helm Chart
+
+**Homepage:** <https://www.ui.com/>
+
+## Maintainers
+
+| Name | Email | Url |
+| ---- | ------ | --- |
+| wauhost | <admin@wauhost.com> |  |
+
+## Source Code
+
+* <https://github.com/k8s-at-home/charts>
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| affinity | object | `{}` |  |
+| autoscaling.enabled | bool | `false` |  |
+| autoscaling.maxReplicas | int | `1` |  |
+| autoscaling.minReplicas | int | `1` |  |
+| autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
+| env.JVM_INIT_HEAP_SIZE | string | `""` |  |
+| env.JVM_MAX_HEAP_SIZE | string | `"1024M"` |  |
+| env.RUNAS_UID0 | string | `"false"` |  |
+| env.TZ | string | `"UTC"` |  |
+| env.UNIFI_GID | string | `"999"` |  |
+| env.UNIFI_STDOUT | string | `"true"` |  |
+| env.UNIFI_UID | string | `"999"` |  |
+| fullnameOverride | string | `""` |  |
+| image.pullPolicy | string | `"IfNotPresent"` |  |
+| image.repository | string | `"jacobalberty/unifi"` |  |
+| image.tag | string | `"v7.1.68"` |  |
+| ingress.main.annotations | object | `{}` |  |
+| ingress.main.enabled | bool | `false` |  |
+| ingress.main.hosts[0].host | string | `"unifi.local"` |  |
+| ingress.main.hosts[0].paths[0].path | string | `"/"` |  |
+| ingress.main.hosts[0].paths[0].pathType | string | `"Prefix"` |  |
+| ingress.main.tls | list | `[]` |  |
+| livenessProbe.failureThreshold | int | `3` |  |
+| livenessProbe.httpGet.path | string | `"/status"` |  |
+| livenessProbe.httpGet.port | int | `8080` |  |
+| livenessProbe.initialDelaySeconds | int | `30` |  |
+| livenessProbe.periodSeconds | int | `10` |  |
+| livenessProbe.timeoutSeconds | int | `5` |  |
+| nameOverride | string | `""` |  |
+| networkPolicy.egress | list | `[]` |  |
+| networkPolicy.enabled | bool | `false` |  |
+| networkPolicy.ingress | list | `[]` |  |
+| nodeSelector | object | `{}` |  |
+| persistence.data.enabled | bool | `true` |  |
+| persistence.data.size | string | `"20Gi"` |  |
+| podAnnotations | object | `{}` |  |
+| podDisruptionBudget.enabled | bool | `false` |  |
+| podDisruptionBudget.minAvailable | int | `1` |  |
+| podLabels | object | `{}` |  |
+| podSecurityContext.fsGroup | int | `999` |  |
+| readinessProbe.failureThreshold | int | `3` |  |
+| readinessProbe.httpGet.path | string | `"/status"` |  |
+| readinessProbe.httpGet.port | int | `8080` |  |
+| readinessProbe.initialDelaySeconds | int | `10` |  |
+| readinessProbe.periodSeconds | int | `5` |  |
+| readinessProbe.timeoutSeconds | int | `3` |  |
+| resources.limits.cpu | string | `"1000m"` |  |
+| resources.limits.memory | string | `"2Gi"` |  |
+| resources.requests.cpu | string | `"500m"` |  |
+| resources.requests.memory | string | `"1Gi"` |  |
+| securityContext.allowPrivilegeEscalation | bool | `false` |  |
+| securityContext.capabilities.drop[0] | string | `"ALL"` |  |
+| securityContext.readOnlyRootFilesystem | bool | `false` |  |
+| securityContext.runAsGroup | int | `999` |  |
+| securityContext.runAsNonRoot | bool | `true` |  |
+| securityContext.runAsUser | int | `999` |  |
+| service.main.ports.controller.enabled | bool | `true` |  |
+| service.main.ports.controller.port | int | `8080` |  |
+| service.main.ports.controller.protocol | string | `"TCP"` |  |
+| service.main.ports.http.enabled | bool | `true` |  |
+| service.main.ports.http.port | int | `8443` |  |
+| service.main.ports.http.protocol | string | `"HTTPS"` |  |
+| service.main.ports.portal-http.enabled | bool | `false` |  |
+| service.main.ports.portal-http.port | int | `8880` |  |
+| service.main.ports.portal-http.protocol | string | `"HTTP"` |  |
+| service.main.ports.portal-https.enabled | bool | `false` |  |
+| service.main.ports.portal-https.port | int | `8843` |  |
+| service.main.ports.portal-https.protocol | string | `"HTTPS"` |  |
+| service.main.ports.speedtest.enabled | bool | `true` |  |
+| service.main.ports.speedtest.port | int | `6789` |  |
+| service.main.ports.speedtest.protocol | string | `"TCP"` |  |
+| service.main.type | string | `"ClusterIP"` |  |
+| service.udp.enabled | bool | `false` |  |
+| service.udp.loadBalancerIP | string | `""` |  |
+| service.udp.ports.discovery.enabled | bool | `true` |  |
+| service.udp.ports.discovery.port | int | `10001` |  |
+| service.udp.ports.discovery.protocol | string | `"UDP"` |  |
+| service.udp.ports.stun.enabled | bool | `true` |  |
+| service.udp.ports.stun.port | int | `3478` |  |
+| service.udp.ports.stun.protocol | string | `"UDP"` |  |
+| service.udp.ports.syslog.enabled | bool | `true` |  |
+| service.udp.ports.syslog.port | int | `5514` |  |
+| service.udp.ports.syslog.protocol | string | `"UDP"` |  |
+| service.udp.type | string | `"LoadBalancer"` |  |
+| serviceAccount.annotations | object | `{}` |  |
+| serviceAccount.create | bool | `true` |  |
+| serviceAccount.name | string | `""` |  |
+| startupProbe.failureThreshold | int | `30` |  |
+| startupProbe.httpGet.path | string | `"/status"` |  |
+| startupProbe.httpGet.port | int | `8080` |  |
+| startupProbe.initialDelaySeconds | int | `30` |  |
+| startupProbe.periodSeconds | int | `10` |  |
+| startupProbe.timeoutSeconds | int | `5` |  |
+| tolerations | list | `[]` |  |
+| volumeMounts | list | `[]` |  |
+| volumes | list | `[]` |  |
+
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.11.0](https://github.com/norwoodj/helm-docs/releases/v1.11.0)
