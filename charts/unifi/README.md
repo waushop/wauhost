@@ -10,7 +10,7 @@ UniFi Network Controller Helm Chart
 
 | Name | Email | Url |
 | ---- | ------ | --- |
-| wauhost | <admin@wauhost.com> |  |
+| wauhost | <siim@waushop.ee> |  |
 
 ## Source Code
 
