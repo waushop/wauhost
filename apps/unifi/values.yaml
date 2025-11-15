@@ -21,7 +21,6 @@ persistence:
     enabled: true
     size: 20Gi
     storageClass: longhorn
-    accessMode: ReadWriteOnce
 
 # Service configuration (NO LoadBalancer costs)
 service:
