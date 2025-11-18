@@ -39,11 +39,11 @@ UniFi Network Controller Helm Chart
 | ingress.main.annotations."cert-manager.io/cluster-issuer" | string | `"letsencrypt"` |  |
 | ingress.main.annotations."traefik.ingress.kubernetes.io/router.tls" | string | `"true"` |  |
 | ingress.main.enabled | bool | `true` |  |
-| ingress.main.hosts[0].host | string | `"controller.waushop.ee"` |  |
+| ingress.main.hosts[0].host | string | `"unifi.waushop.ee"` |  |
 | ingress.main.hosts[0].paths[0].path | string | `"/"` |  |
 | ingress.main.hosts[0].paths[0].pathType | string | `"Prefix"` |  |
-| ingress.main.tls[0].hosts[0] | string | `"controller.waushop.ee"` |  |
-| ingress.main.tls[0].secretName | string | `"controller-tls"` |  |
+| ingress.main.tls[0].hosts[0] | string | `"unifi.waushop.ee"` |  |
+| ingress.main.tls[0].secretName | string | `"unifi-tls"` |  |
 | livenessProbe.failureThreshold | int | `3` |  |
 | livenessProbe.httpGet.path | string | `"/status"` |  |
 | livenessProbe.httpGet.port | int | `8080` |  |
