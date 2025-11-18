@@ -3,7 +3,7 @@
 
 image:
   repository: jacobalberty/unifi
-  tag: "v7.1.68"
+  tag: "v9.5.21"
   pullPolicy: IfNotPresent
 
 # Resources optimized for Hetzner cluster
