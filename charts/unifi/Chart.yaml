@@ -4,7 +4,7 @@ name: unifi
 description: UniFi Network Controller Helm Chart
 type: application
 version: 0.1.0
-appVersion: "7.1.68"
+appVersion: "9.5.21"
 keywords:
   - unifi
   - ubiquiti

@@ -6,7 +6,7 @@
 image:
   repository: jacobalberty/unifi
   pullPolicy: IfNotPresent
-  tag: "v7.1.68"
+  tag: "v9.5.21"
 
 nameOverride: ""
 fullnameOverride: ""
