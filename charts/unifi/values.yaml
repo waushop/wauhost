@@ -81,20 +81,19 @@ service:
 # Ingress configuration
 ingress:
   main:
-    enabled: false
-    annotations: {}
-      # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-      # nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    enabled: true
+    annotations:
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt"
     hosts:
-      - host: unifi.local
+      - host: controller.waushop.ee
         paths:
           - path: /
             pathType: Prefix
-    tls: []
-    #  - secretName: unifi-tls
-    #    hosts:
-    #      - unifi.local
+    tls:
+      - secretName: controller-tls
+        hosts:
+          - controller.waushop.ee
 
 # Resource limits and requests
 resources:
