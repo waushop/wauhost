@@ -93,6 +93,16 @@ affinity: {}
 # Environment variables
 env:
   NODE_ENV: production
+  # Hetzner Object Storage - Client-side (browser accessible)
+  NEXT_PUBLIC_STORAGE_ENDPOINT: hel1.your-objectstorage.com
+  NEXT_PUBLIC_STORAGE_PORT: "443"
+  NEXT_PUBLIC_STORAGE_USE_SSL: "true"
+  NEXT_PUBLIC_STORAGE_BUCKET: agrofort
+  # Hetzner Object Storage - Server-side (API uploads)
+  STORAGE_ENDPOINT: hel1.your-objectstorage.com
+  STORAGE_PORT: "443"
+  STORAGE_USE_SSL: "true"
+  STORAGE_BUCKET: agrofort
 
 # Redirect configuration
 redirect:
