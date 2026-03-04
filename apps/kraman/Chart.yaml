@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kraman
+description: A Helm chart for Kraus Ehitus website
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
