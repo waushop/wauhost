@@ -56,15 +56,10 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-    - host: www.kraman.ee
-      paths:
-        - path: /
-          pathType: Prefix
   tls:
     - secretName: kraman-tls
       hosts:
         - kraman.ee
-        - www.kraman.ee
 
 resources:
   limits:
