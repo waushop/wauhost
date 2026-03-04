@@ -52,10 +52,6 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt"
   hosts:
-    - host: v2.kraman.ee
-      paths:
-        - path: /
-          pathType: Prefix
     - host: kraman.ee
       paths:
         - path: /
@@ -65,9 +61,6 @@ ingress:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: kraman-v2-tls
-      hosts:
-        - v2.kraman.ee
     - secretName: kraman-tls
       hosts:
         - kraman.ee
