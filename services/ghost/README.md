@@ -1,329 +1,68 @@
-# Ghost Helm Chart
+# ghost
 
-A production-ready Ghost blog platform deployment with enterprise security features and external secrets management.
+Reusable Helm chart for deploying Ghost blog instances. Each site gets its own release with a per-site values file.
 
-## 🎯 Overview
+## What it deploys
 
-Ghost is a powerful open source publishing platform built on Node.js. This Helm chart deploys Ghost with:
+- `Deployment` running Ghost 5 on Node.js
+- `Service` (ClusterIP, port 80 -> 2368)
+- `Ingress` via Traefik with TLS (cert-manager)
+- `PersistentVolumeClaim` for Ghost content
+- `NetworkPolicy` (optional)
 
-✅ **Security First**
-- External secrets management integration
-- Security contexts and non-root containers
-- Network policies for traffic isolation
-- TLS/SSL certificate automation
+Database and mail passwords are read from a Kubernetes Secret named `<release>-secrets`. That secret is managed by Sealed Secrets and must exist before the pod starts.
 
-✅ **Production Ready**
-- Health checks (liveness & readiness probes)
-- Resource limits and requests
-- Multi-environment configuration support
-- Persistent storage with configurable access modes
+## Deploy a new site
 
-✅ **Enterprise Features**
-- MySQL database integration
-- SMTP email configuration
-- Multi-replica support
-- Performance optimization settings
+1. Create a Sealed Secret with the DB and mail passwords in the target namespace
+2. Create a values file for the site:
 
-✅ **DevOps Friendly**
-- External Secrets Operator integration
-- Traefik ingress with cert-manager
-- Comprehensive monitoring hooks
-- Flexible node scheduling
-
-## 📋 Prerequisites
-
-- Kubernetes 1.19+
-- Helm 3.0+
-- MySQL database (use our MySQL chart)
-- External Secrets Operator (for production)
-- Traefik ingress controller
-- cert-manager for automated TLS
-
-## 🚀 Quick Start
-
-### Production Deployment (Recommended)
-```bash
-helm install ghost ./charts/ghost \
-  --namespace ghost \
-  --create-namespace \
-  --set host=myblog.com \
-  --set database.host=mysql.mysql.svc.cluster.local
-```
-
-### Development Deployment
-```bash
-helm install ghost ./charts/ghost \
-  --namespace ghost \
-  --create-namespace \
-  --set externalSecrets.enabled=false \
-  --set database.password=devpassword \
-  --set host=blog.dev.local
-```
-
-## ⚙️ Configuration
-
-### 🏗️ Infrastructure Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `namespace` | Deployment namespace | `"vausiim"` |
-| `releaseName` | Release name for resources | `"vausiim"` |
-| `host` | Blog hostname | `"vausiim.ee"` |
-| `replicaCount` | Number of Ghost replicas | `1` |
-
-### 🐳 Application Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `image.repository` | Ghost image repository | `ghost` |
-| `image.tag` | Ghost image tag | `"5"` |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
-
-### 🗄️ Database Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `database.host` | MySQL host | `mysql.mysql.svc.cluster.local` |
-| `database.user` | MySQL username | `"vausiim"` |
-| `database.database` | MySQL database name | `"vausiim"` |
-| `database.password` | MySQL password (dev only) | `""` |
-
-### 🔐 Security Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `externalSecrets.enabled` | Enable external secrets | `true` |
-| `externalSecrets.refreshInterval` | Secret refresh interval | `1h` |
-| `securityContext.enabled` | Enable security context | `true` |
-| `securityContext.runAsNonRoot` | Run as non-root user | `true` |
-| `networkPolicy.enabled` | Enable network policies | `false` |
-
-### 📧 Mail Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mail.enabled` | Enable mail configuration | `true` |
-| `mail.transport` | Mail transport | `SMTP` |
-| `mail.options.host` | SMTP host | `"smtp.eu.mailgun.org"` |
-| `mail.options.port` | SMTP port | `587` |
-| `mail.from` | From email address | `"noreply@vausiim.ee"` |
-
-### 💾 Storage Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `pvc.size` | Persistent volume size | `5Gi` |
-| `pvc.storageClassName` | Storage class | `""` (cluster default) |
-| `pvc.accessMode` | Access mode | `ReadWriteOnce` |
-
-### 🌐 Ingress Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `ingress.enabled` | Enable ingress | `true` |
-| `ingress.className` | Ingress class | `"traefik"` |
-| `ingress.tls.enabled` | Enable TLS | `true` |
-
-### 🚀 Performance Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `resources.requests.memory` | Memory request | `"256Mi"` |
-| `resources.requests.cpu` | CPU request | `"100m"` |
-| `resources.limits.memory` | Memory limit | `"512Mi"` |
-| `resources.limits.cpu` | CPU limit | `"500m"` |
-
-## 📝 Production Examples
-
-### Multi-Environment Setup
 ```yaml
-# production-values.yaml
-namespace: production
-host: myblog.com
-replicaCount: 2
+# my-blog-values.yaml
+namespace: my-blog
+releaseName: my-blog
+host: my-blog.com
 
-# Use production environment preset
-environments:
-  production:
-    enabled: true
-
-# Enhanced security
-securityContext:
-  enabled: true
-networkPolicy:
-  enabled: true
-
-# Performance tuning
-resources:
-  requests:
-    memory: "512Mi"
-    cpu: "200m"
-  limits:
-    memory: "1Gi"
-    cpu: "1000m"
-
-# Larger storage
-pvc:
-  size: 20Gi
-  storageClassName: fast-ssd
-
-# Production database
 database:
-  host: mysql-primary.mysql.svc.cluster.local
-  user: ghost_prod
-  database: ghost_production
+  user: my_blog
+  database: my_blog
 
-# External secrets
-externalSecrets:
-  remoteRefs:
-    dbPassword: production/ghost/db-password
-    mailPassword: production/ghost/mail-password
+mail:
+  from: "noreply@my-blog.com"
+  options:
+    auth:
+      user: "postmaster@mg.my-blog.com"
 ```
 
-### High Availability Setup
-```yaml
-# ha-values.yaml
-replicaCount: 3
+3. Deploy:
 
-# Pod anti-affinity for HA
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 1
-      podAffinityTerm:
-        topologyKey: kubernetes.io/hostname
-        labelSelector:
-          matchLabels:
-            app.kubernetes.io/name: ghost
-
-# Enhanced health checks
-livenessProbe:
-  initialDelaySeconds: 120
-  periodSeconds: 30
-readinessProbe:
-  initialDelaySeconds: 60
-  periodSeconds: 10
-
-# Shared storage for multi-replica
-pvc:
-  accessMode: ReadWriteMany
-  size: 50Gi
-```
-
-## 🔧 Troubleshooting
-
-### 🚨 Ghost Pod Issues
-
-**Pod not starting:**
 ```bash
-kubectl get pods -n ghost
-kubectl describe pod <pod-name> -n ghost
-kubectl logs -n ghost deployment/ghost --previous
+helm install my-blog ./services/ghost -n my-blog --create-namespace -f my-blog-values.yaml
 ```
 
-**Performance issues:**
-```bash
-kubectl top pods -n ghost
-kubectl exec -n ghost deployment/ghost -- ps aux
-```
+## Configuration
 
-### 🗄️ Database Connection
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `namespace` | Target namespace | `""` |
+| `releaseName` | Release name for PVC/TLS naming | `""` |
+| `host` | Blog hostname | `example.com` |
+| `replicaCount` | Replicas | `1` |
+| `image.tag` | Ghost version | `5` |
+| `database.host` | MySQL host | `mysql.mysql.svc.cluster.local` |
+| `database.user` | MySQL user | `""` |
+| `database.database` | MySQL database | `""` |
+| `pvc.size` | Content storage size | `5Gi` |
+| `mail.enabled` | Enable SMTP | `true` |
+| `mail.from` | From address | `""` |
+| `mail.options.host` | SMTP host | `smtp.eu.mailgun.org` |
+| `ingress.className` | Ingress class | `traefik` |
+| `networkPolicy.enabled` | Enable network policy | `false` |
+| `resources.requests.memory` | Memory request | `256Mi` |
+| `resources.limits.memory` | Memory limit | `512Mi` |
 
-**Test database connectivity:**
-```bash
-kubectl run -it --rm debug --image=mysql:8 --restart=Never -- \
-  mysql -h mysql.mysql.svc.cluster.local -u vausiim -p
+## Prerequisites
 
-# Check environment variables
-kubectl exec -n ghost deployment/ghost -- env | grep database
-```
-
-### 🔐 External Secrets Issues
-
-**Debug external secrets:**
-```bash
-kubectl get externalsecret -n ghost -o yaml
-kubectl describe externalsecret ghost-secrets -n ghost
-kubectl get secret ghost-secrets -n ghost -o yaml
-```
-
-### 📧 Mail Configuration
-
-**Test mail settings:**
-```bash
-# Check mail environment
-kubectl exec -n ghost deployment/ghost -- env | grep mail
-
-# View Ghost admin mail settings
-# Navigate to: https://yourblog.com/ghost/#/settings/email
-```
-
-### 💾 Storage Problems
-
-**Check storage:**
-```bash
-kubectl get pvc -n ghost
-kubectl describe pvc ghost-pvc -n ghost
-kubectl exec -n ghost deployment/ghost -- df -h /var/lib/ghost/content
-```
-
-## 🔄 Backup & Recovery
-
-### Create Backup
-```bash
-# Automated backup
-kubectl create job ghost-backup-$(date +%Y%m%d) \
-  --from=deployment/ghost -n ghost \
-  -- tar czf /backup/ghost-$(date +%Y%m%d).tar.gz /var/lib/ghost/content
-
-# Manual backup
-kubectl exec -n ghost deployment/ghost -- \
-  tar czf - /var/lib/ghost/content > ghost-backup-$(date +%Y%m%d).tar.gz
-```
-
-### Restore from Backup
-```bash
-# Copy backup to pod
-kubectl cp ghost-backup.tar.gz ghost/<pod-name>:/tmp/backup.tar.gz
-
-# Restore content
-kubectl exec -n ghost deployment/ghost -- \
-  tar xzf /tmp/backup.tar.gz -C / --strip-components=1
-```
-
-## 🔒 Security Best Practices
-
-### Production Security Checklist
-- ✅ Enable external secrets management
-- ✅ Use network policies for traffic isolation
-- ✅ Enable security contexts (non-root containers)
-- ✅ Set resource limits to prevent DoS
-- ✅ Enable TLS with valid certificates
-- ✅ Regular image updates for security patches
-- ✅ Backup encryption at rest
-- ✅ Monitor security events
-
-### Security Configuration Example
-```yaml
-securityContext:
-  enabled: true
-  runAsNonRoot: true
-  runAsUser: 1000
-  capabilities:
-    drop: ["ALL"]
-
-networkPolicy:
-  enabled: true
-  ingress:
-    allowIngressController: true
-  egress:
-    allowMySQL: true
-    allowMail: true
-
-externalSecrets:
-  enabled: true
-  refreshInterval: 15m
-```
-
-## 📚 Additional Resources
-
-- [Ghost Documentation](https://ghost.org/docs/)
-- [Ghost Configuration Reference](https://ghost.org/docs/config/)
-- [External Secrets Operator](https://external-secrets.io/)
-- [Kubernetes Security Best Practices](https://kubernetes.io/docs/concepts/security/)
-
----
-
-**🎉 Ready for Production!** This Ghost chart provides enterprise-grade security, scalability, and operational excellence for your Ghost blog platform.
+- Sealed Secret `<release>-secrets` with keys `database__connection__password` and `mail__options__auth__pass`
+- MySQL database and user created in the shared MySQL instance
+- cert-manager ClusterIssuer named `letsencrypt`
