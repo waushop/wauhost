@@ -55,14 +55,10 @@ spec:
             - name: database__connection__user
               value: "{{ .Values.database.user }}"
             - name: database__connection__password
-              {{- if .Values.externalSecrets.enabled }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ghost.fullname" . }}-secrets
                   key: database__connection__password
-              {{- else }}
-              value: "{{ .Values.database.password }}"
-              {{- end }}
             - name: database__connection__database
               value: "{{ .Values.database.database }}"
             - name: database__pool__min
@@ -85,14 +81,10 @@ spec:
             - name: mail__options__auth__user
               value: "{{ .Values.mail.options.auth.user }}"
             - name: mail__options__auth__pass
-              {{- if and .Values.mail.enabled .Values.externalSecrets.enabled }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ghost.fullname" . }}-secrets
                   key: mail__options__auth__pass
-              {{- else if .Values.mail.enabled }}
-              value: "{{ .Values.mail.options.auth.pass }}"
-              {{- end }}
             - name: mail__from
               value: "{{ .Values.mail.from }}"
             {{- end }}

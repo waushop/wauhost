@@ -8,7 +8,6 @@ Helm charts for running shared cluster infrastructure, services, and network con
 wauhost/
 ├── infra/                      # Cluster-wide infrastructure
 │   ├── cert-manager/           # TLS certificates (ClusterIssuer + Let's Encrypt)
-│   ├── external-secrets/       # Vault + External Secrets Operator
 │   ├── sealed-secrets/         # Bitnami Sealed Secrets controller
 │   └── mysql/                  # Shared MySQL instance
 ├── services/                   # Deployable service templates
@@ -22,9 +21,9 @@ wauhost/
 
 ```
 1. infra/sealed-secrets     → Sealed Secrets controller
-2. infra/external-secrets   → Vault + ClusterSecretStore
-3. infra/cert-manager       → ClusterIssuer for TLS
-4. infra/mysql              → Shared database
+2. infra/cert-manager       → ClusterIssuer for TLS
+3. infra/mysql              → Shared database
+4. secrets/                 → Apply sealed secrets
 5. services/ghost           → Blog instances (one release per site)
 6. network/unifi            → UniFi controller routing
 ```
@@ -44,7 +43,6 @@ Each chart is deployed with Helm:
 # Infrastructure
 helm dependency build ./infra/sealed-secrets
 helm install sealed-secrets ./infra/sealed-secrets -n sealed-secrets --create-namespace
-helm install external-secrets ./infra/external-secrets -n vault --create-namespace
 helm install cert-manager ./infra/cert-manager -n cert-manager --create-namespace
 helm install mysql ./infra/mysql -n mysql --create-namespace
 

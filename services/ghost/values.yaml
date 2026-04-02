@@ -31,9 +31,7 @@ database:
   host: mysql.mysql.svc.cluster.local
   user: ""
   database: ""
-  # Password managed by External Secrets when externalSecrets.enabled=true
-  # Set this only for development/testing when externalSecrets.enabled=false
-  password: ""
+  password: ""  # Managed by Sealed Secrets
 
 # -----------------------------------------------------------------------------
 # Storage Configuration
@@ -77,23 +75,11 @@ mail:
     secure: false
     auth:
       user: ""
-      # Password managed by External Secrets when externalSecrets.enabled=true
-      # Set this only for development/testing when externalSecrets.enabled=false
-      pass: ""
+      pass: ""  # Managed by Sealed Secrets
 
 # -----------------------------------------------------------------------------
 # Security Configuration
 # -----------------------------------------------------------------------------
-# External Secrets Configuration
-externalSecrets:
-  enabled: true
-  refreshInterval: 1h
-  secretStore: cluster-secret-store
-  secretStoreKind: ClusterSecretStore
-  remoteRefs:
-    dbPassword: ""
-    mailPassword: ""
-
 # Security Context
 securityContext:
   enabled: true

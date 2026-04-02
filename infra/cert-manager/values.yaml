@@ -5,18 +5,9 @@
 nameOverride: ""
 fullnameOverride: ""
 
-# External Secrets Configuration
-externalSecrets:
-  enabled: true
-  refreshInterval: 1h
-  secretStore: cluster-secret-store
-  secretStoreKind: ClusterSecretStore
-  remoteRefs:
-    email: wauhost/cert-manager/email
-
 # Cert-manager configuration
 certManager:
-  email: admin@example.com  # Will be overridden by external secret if enabled
+  email: admin@example.com
   acmeServer: https://acme-v02.api.letsencrypt.org/directory
   ingressClass: traefik
 

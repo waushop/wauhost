@@ -8,21 +8,9 @@ fullnameOverride: ""
 # Namespace configuration
 namespace: "mysql"
 
-# External Secrets Configuration
-externalSecrets:
-  enabled: true
-  refreshInterval: 1h
-  secretStore: cluster-secret-store
-  secretStoreKind: ClusterSecretStore
-  remoteRefs:
-    rootPassword: wauhost/mysql/root-password
-    databasePasswords: wauhost/mysql/databases
-
-# MySQL Authentication
+# MySQL Authentication (password managed by Sealed Secrets)
 auth:
-  # Root password managed by External Secrets
-  # Set this only for development/testing when externalSecrets.enabled=false
-  rootPassword: ""  # Override with external secret
+  rootPassword: ""
 
 # Database configuration
 databases:
