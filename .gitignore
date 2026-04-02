@@ -20,15 +20,11 @@ Thumbs.db
 logs/
 
 # Helm related
-charts/*/charts/
-charts/*/Chart.lock
-*.tgz
+**/charts/*.tgz
+**/Chart.lock
 .helmignore
 
-# Kubernetes secrets and sensitive data
-*-secret.yaml
-*-secrets.yaml
-secrets/
+# Kubernetes sensitive data (sealed secrets are safe to commit)
 credentials/
 *.key
 *.pem
