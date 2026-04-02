@@ -32,7 +32,6 @@ wauhost/
 
 - k3s cluster with kubeconfig
 - Traefik ingress controller (bundled with k3s)
-- HashiCorp Vault instance
 - DNS records pointing to the cluster
 
 ## Deploying
@@ -52,7 +51,3 @@ kubectl apply -f secrets/
 # Ghost blog instance (one per site, with per-site values)
 helm install my-blog ./services/ghost -n my-blog --create-namespace -f my-blog-values.yaml
 ```
-
-## Contact
-
-Maintained by Siim Vaus — siim@wauhost.ee
