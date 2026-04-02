@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: unifi-ingress
+  namespace: unifi
+  labels:
+    app: unifi
+spec:
+  selector:
+    app: unifi
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: https
+    port: 8443
+    targetPort: 8443
+    protocol: TCP
+  - name: stun
+    port: 3478
+    targetPort: 3478
+    protocol: UDP
+  - name: speedtest
+    port: 6789
+    targetPort: 6789
+    protocol: TCP
+  - name: discovery
+    port: 10001
+    targetPort: 10001
+    protocol: UDP
+---
+# LoadBalancer for remote device adoption (bypasses Traefik)
+apiVersion: v1
+kind: Service
+metadata:
+  name: unifi-adoption-ports
+  namespace: unifi
+spec:
+  selector:
+    app: unifi
+  type: LoadBalancer
+  ports:
+  - name: controller-inform
+    port: 8443
+    targetPort: 8443
+    protocol: TCP
+  - name: discovery-udp
+    port: 10001
+    targetPort: 10001
+    protocol: UDP
+  - name: stun-udp
+    port: 3478
+    targetPort: 3478
+    protocol: UDP
+  - name: controller-http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP

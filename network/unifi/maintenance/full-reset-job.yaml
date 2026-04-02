@@ -1,6 +1,3 @@
-# Full UniFi Reset Script
-# This will completely wipe all UniFi data for a fresh start
-
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -21,18 +18,11 @@ spec:
         - bash
         - -c
         - |
-          echo "🔥 Starting FULL UniFi Controller Reset..."
-
-          # Create backup of everything (just in case)
-          echo "💾 Creating emergency backup..."
+          echo "Starting FULL UniFi Controller Reset..."
           cp -r /unifi/data /unifi/emergency-backup-$(date +%Y%m%d-%H%M%S) || true
-
-          # Remove EVERYTHING except the volume structure
-          echo "🗑️ Removing all UniFi data..."
+          echo "Removing all UniFi data..."
           find /unifi/data -mindepth 1 -delete
-
-          echo "✅ Full reset complete! UniFi will start completely fresh."
-          echo "🚨 You'll need to set up everything from scratch!"
+          echo "Full reset complete."
         volumeMounts:
         - name: unifi-data
           mountPath: /unifi/data

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unifi-reset-script
+  namespace: unifi
+data:
+  reset.sh: |
+    #!/bin/bash
+    echo "Starting UniFi Controller Reset..."
+
+    killall java 2>/dev/null || true
+    sleep 5
+
+    echo "Creating backup..."
+    cp -r /unifi/data /unifi/data-backup-$(date +%Y%m%d-%H%M%S)
+
+    echo "Removing database files..."
+    rm -rf /unifi/data/db/*
+    rm -f /unifi/data/*.pid
+    rm -rf /unifi/data/tmp/*
+    rm -rf /unifi/data/work/*
+
+    echo "Reset complete. Restart pod to initialize fresh database."

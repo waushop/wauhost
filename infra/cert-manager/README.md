@@ -1,117 +1,57 @@
-# Cert-Manager Helm Chart
+# cert-manager
 
-This Helm chart deploys cert-manager configuration including ClusterIssuer for Let's Encrypt.
+Helm chart that deploys a Let's Encrypt `ClusterIssuer` for cert-manager. Uses HTTP01 challenges via Traefik.
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.0+
-- cert-manager CRDs installed in the cluster
-- (Optional) External Secrets Operator for external secret management
+- cert-manager installed in the cluster with its CRDs
+- Traefik ingress controller
 
-## Installation
+## What it deploys
 
-```bash
-helm install cert-manager ./charts/cert-manager
-```
+- A `ClusterIssuer` named `letsencrypt` (configurable) pointing at the Let's Encrypt ACME v2 API
+- Optionally: a post-install/post-upgrade Job that patches the ClusterIssuer email from a Kubernetes secret, along with the ServiceAccount, ClusterRole, and ClusterRoleBinding it needs
+
+The patch job is only created when `externalSecrets.enabled=true`. It waits for a secret named `<release>-email-secret` to exist, reads the `email` key from it, and patches the ClusterIssuer via `kubectl`.
+
+Secrets (i.e. the email secret the job reads from) are managed externally — for example via Sealed Secrets — and must exist before the job runs.
 
 ## Configuration
 
-### Basic Configuration
-
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `certManager.email` | Email address for Let's Encrypt registration | `admin@example.com` |
+| `certManager.email` | Email for Let's Encrypt registration | `admin@example.com` |
 | `certManager.acmeServer` | ACME server URL | `https://acme-v02.api.letsencrypt.org/directory` |
-| `certManager.ingressClass` | Ingress class for HTTP01 challenge | `nginx` |
-| `clusterIssuer.name` | Name of the ClusterIssuer | `letsencrypt` |
+| `certManager.ingressClass` | Ingress class for HTTP01 solver | `traefik` |
+| `clusterIssuer.name` | Name of the ClusterIssuer resource | `letsencrypt` |
+| `externalSecrets.enabled` | Deploy the email patch job | `false` |
+| `image.repository` | Image used by the patch job | `bitnami/kubectl` |
+| `image.tag` | Image tag | `latest` |
 
-### External Secrets Configuration
-
-When using External Secrets Operator, you can store the email address in an external secret store:
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `externalSecrets.enabled` | Enable external secrets integration | `true` |
-| `externalSecrets.refreshInterval` | How often to refresh the secret | `1h` |
-| `externalSecrets.secretStore` | Name of the SecretStore/ClusterSecretStore | `cluster-secret-store` |
-| `externalSecrets.secretStoreKind` | Kind of secret store (SecretStore or ClusterSecretStore) | `ClusterSecretStore` |
-| `externalSecrets.remoteRefs.email` | Path to email in external secret store | `wauhost/cert-manager/email` |
-
-## Usage
-
-### With External Secrets
-
-1. Store your email address in your external secret store at the path specified in `externalSecrets.remoteRefs.email`
-
-2. Install the chart:
-```bash
-helm install cert-manager ./charts/cert-manager \
-  --set externalSecrets.enabled=true \
-  --set externalSecrets.remoteRefs.email="my-org/cert-manager/email"
-```
-
-The chart will:
-- Create an ExternalSecret that fetches the email from your secret store
-- Deploy a post-install job that patches the ClusterIssuer with the retrieved email
-
-### Without External Secrets
+## Deploy
 
 ```bash
-helm install cert-manager ./charts/cert-manager \
-  --set externalSecrets.enabled=false \
-  --set certManager.email="your-email@example.com"
+helm install cert-manager ./infra/cert-manager \
+  --namespace cert-manager \
+  --set certManager.email="your@email.com"
 ```
 
-## Certificate Creation
+If the email is injected from a secret (e.g. via Sealed Secrets), enable the patch job:
 
-Once installed, you can create certificates by adding annotations to your Ingress resources:
+```bash
+helm install cert-manager ./infra/cert-manager \
+  --namespace cert-manager \
+  --set externalSecrets.enabled=true
+```
+
+The secret `<release>-email-secret` with key `email` must exist in the same namespace before the post-install job runs.
+
+## Using the issuer
+
+Add this annotation to any Ingress:
 
 ```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt"
-spec:
-  tls:
-  - hosts:
-    - example.com
-    secretName: example-com-tls
+cert-manager.io/cluster-issuer: "letsencrypt"
 ```
 
-## Troubleshooting
-
-### External Secret Not Working
-
-1. Check if the ExternalSecret is created:
-```bash
-kubectl get externalsecret -n <namespace>
-```
-
-2. Check if the secret was created by the ExternalSecret:
-```bash
-kubectl get secret <release-name>-cert-manager-email-secret -n <namespace>
-```
-
-3. Check the patch job logs:
-```bash
-kubectl logs job/<release-name>-cert-manager-patch-issuer -n <namespace>
-```
-
-### Certificate Not Issuing
-
-1. Check cert-manager logs:
-```bash
-kubectl logs -n cert-manager deployment/cert-manager
-```
-
-2. Check certificate status:
-```bash
-kubectl describe certificate <certificate-name>
-```
-
-3. Check ClusterIssuer status:
-```bash
-kubectl describe clusterissuer letsencrypt
-```
+And a `tls` block with the desired secret name. cert-manager will handle certificate issuance automatically.

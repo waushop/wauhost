@@ -1,6 +1,3 @@
-# UniFi Deployment with Security Hardening
-# Following official jacobalberty/unifi best practices
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,7 +13,6 @@ spec:
       labels:
         app: unifi
     spec:
-      # Official security: run as non-root user 999/999
       securityContext:
         runAsUser: 999
         runAsGroup: 999
@@ -82,4 +78,4 @@ spec:
           claimName: unifi-pvc
       - name: backup
         persistentVolumeClaim:
-          claimName: unifi-pvc
+          claimName: unifi-backup-pvc
