@@ -1,0 +1,163 @@
+🎉 External Secrets Operator has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Release.Namespace }}
+   Release:   {{ .Release.Name }}
+
+{{- if .Values.vault.enabled }}
+🔐 HashiCorp Vault Status:
+   Namespace: {{ .Values.vault.namespace }}
+   Service:   {{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8200
+   Mode:      {{ if .Values.vault.dev.enabled }}Development{{ else }}Production{{ end }}
+   
+   Access Vault UI/CLI:
+   ```bash
+   kubectl port-forward -n {{ .Values.vault.namespace }} svc/{{ .Values.vault.name }} 8200:8200
+   export VAULT_ADDR='http://127.0.0.1:8200'
+   export VAULT_TOKEN='{{ .Values.vault.dev.rootToken }}'
+   ```
+   
+   {{- if .Values.vault.init.enabled }}
+   Pre-initialized secrets:
+   {{- range $path, $data := .Values.vault.init.secrets }}
+   - {{ $path }}
+   {{- end }}
+   {{- end }}
+{{- end }}
+
+🔐 Secret Store Configuration:
+   {{- if .Values.clusterSecretStore.enabled }}
+   Cluster Secret Store: {{ .Values.clusterSecretStore.name }}
+   Provider: {{ .Values.secretStore.provider }}
+   {{- if eq .Values.secretStore.provider "vault" }}
+   Vault Server: {{ .Values.secretStore.server }}
+   Vault Path: {{ .Values.secretStore.path }}
+   {{- end }}
+   {{- end }}
+
+🔧 Next Steps:
+
+1. **Verify ClusterSecretStore**:
+   ```bash
+   kubectl get clustersecretstores
+   kubectl describe clustersecretstore {{ .Values.clusterSecretStore.name }}
+   ```
+
+2. **Test External Secret**:
+   ```bash
+   # Create a test namespace
+   kubectl create namespace test
+   
+   # Apply test external secret
+   cat <<EOF | kubectl apply -f -
+   apiVersion: external-secrets.io/v1
+   kind: ExternalSecret
+   metadata:
+     name: test-secret
+     namespace: test
+   spec:
+     refreshInterval: 15s
+     secretStoreRef:
+       name: {{ .Values.clusterSecretStore.name }}
+       kind: ClusterSecretStore
+     target:
+       name: test-secret
+     data:
+       - secretKey: password
+         remoteRef:
+           key: {{ .Values.secretStore.path }}/data/wauhost/mysql/root-password
+           property: password
+   EOF
+   
+   # Check if secret was created
+   kubectl get secret test-secret -n test
+   kubectl get secret test-secret -n test -o jsonpath='{.data.password}' | base64 -d
+   ```
+
+3. **Deploy Applications**:
+   Your applications are ready to use external secrets:
+   ```bash
+   # MySQL
+   helm install mysql ./charts/mysql -n mysql --create-namespace
+   
+   # WordPress
+   helm install wordpress ./charts/wordpress -n wordpress --create-namespace
+   
+   # Ghost
+   helm install ghost ./charts/ghost -n ghost --create-namespace
+   ```
+
+📊 Monitoring:
+   # Check operator status
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name=external-secrets
+   
+   {{- if .Values.vault.enabled }}
+   # Check Vault status
+   kubectl get pods -n {{ .Values.vault.namespace }} -l app.kubernetes.io/name={{ .Values.vault.name }}
+   {{- end }}
+   
+   # View operator logs
+   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name=external-secrets
+
+🔍 Verify External Secrets:
+   # List all external secrets
+   kubectl get externalsecrets -A
+   
+   # Check sync status
+   kubectl get externalsecrets -A -o custom-columns=\
+   NAMESPACE:.metadata.namespace,\
+   NAME:.metadata.name,\
+   READY:.status.conditions[0].status,\
+   MESSAGE:.status.conditions[0].message
+
+🛠️ Common Operations:
+
+1. **Add New Secrets to Vault**:
+   ```bash
+   {{- if .Values.vault.enabled }}
+   kubectl exec -n {{ .Values.vault.namespace }} {{ .Values.vault.name }}-0 -- \
+     vault kv put {{ .Values.secretStore.path }}/wauhost/myapp/password password="newsecret"
+   {{- end }}
+   ```
+
+2. **Force Secret Refresh**:
+   ```bash
+   kubectl annotate externalsecret <name> \
+     force-sync=$(date +%s) --overwrite
+   ```
+
+3. **Debug Sync Issues**:
+   ```bash
+   kubectl describe externalsecret <name> -n <namespace>
+   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name=external-secrets
+   ```
+
+⚠️  Security Notes:
+   {{- if and .Values.vault.enabled .Values.vault.dev.enabled }}
+   ⚡ Vault is running in DEVELOPMENT mode with a hardcoded root token!
+   This is NOT secure for production use. For production:
+   1. Disable dev mode in values.yaml
+   2. Use proper authentication (Kubernetes auth, AppRole, etc.)
+   3. Enable TLS
+   4. Implement proper unsealing procedures
+   {{- end }}
+
+🆘 Troubleshooting:
+   # Check if Vault is accessible
+   {{- if .Values.vault.enabled }}
+   kubectl exec -n {{ .Release.Namespace }} deployment/{{ .Release.Name }}-external-secrets -- \
+     curl -s http://{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8200/v1/sys/health
+   {{- end }}
+   
+   # Check secret store status
+   kubectl get clustersecretstore {{ .Values.clusterSecretStore.name }} -o yaml
+   
+   # Common issues:
+   - "401 Unauthorized": Check Vault token in secret
+   - "404 Not Found": Verify secret path includes /data/ for KV v2
+   - "Connection refused": Check Vault service is running
+
+📚 Resources:
+   - External Secrets: https://external-secrets.io/
+   - Vault Documentation: https://www.vaultproject.io/docs
+   - API Reference: https://external-secrets.io/latest/api/

@@ -1,0 +1,25 @@
+{{- if and .Values.vault.enabled .Values.vault.tls.enabled .Values.vault.tls.certManager.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.vault.name }}-tls
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  secretName: {{ .Values.vault.name }}-tls
+  issuerRef:
+    name: {{ .Values.vault.tls.certManager.issuer }}
+    kind: {{ .Values.vault.tls.certManager.issuerKind }}
+  commonName: {{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local
+  dnsNames:
+  - {{ .Values.vault.name }}
+  - {{ .Values.vault.name }}.{{ .Values.vault.namespace }}
+  - {{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc
+  - {{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local
+  - {{ .Values.vault.name }}-0.{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+{{- end }}

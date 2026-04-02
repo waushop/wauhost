@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: ghost
+description: Ghost blog
+type: application
+version: 0.1.0
+appVersion: "5.0"

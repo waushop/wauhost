@@ -1,0 +1,60 @@
+{{- if and .Values.vault.enabled .Values.vault.init.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.vault.name }}-init
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault-init
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "external-secrets.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: vault-init
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "external-secrets.serviceAccountName" . }}-vault
+      containers:
+      - name: vault-init
+        image: bitnami/kubectl:latest
+        env:
+        - name: VAULT_ADDR
+          value: "{{ if .Values.vault.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8200"
+        {{- if not .Values.vault.tls.enabled }}
+        - name: VAULT_SKIP_VERIFY
+          value: "true"
+        {{- end }}
+        command:
+        - /bin/sh
+        - /scripts/init-vault.sh
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: vault-bin
+          mountPath: /usr/local/bin/vault
+          subPath: vault
+      initContainers:
+      - name: install-vault
+        image: "{{ .Values.vault.image.repository }}:{{ .Values.vault.image.tag }}"
+        command:
+        - sh
+        - -c
+        - cp /bin/vault /vault-bin/vault
+        volumeMounts:
+        - name: vault-bin
+          mountPath: /vault-bin
+      volumes:
+      - name: scripts
+        configMap:
+          name: {{ .Values.vault.name }}-init-scripts
+          defaultMode: 0755
+      - name: vault-bin
+        emptyDir: {}
+{{- end }}

@@ -1,0 +1,24 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: unifi-web
+  namespace: unifi
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+spec:
+  entryPoints:
+  - web
+  routes:
+  - match: Host(`unifi.waushop.ee`)
+    kind: Rule
+    middlewares:
+    - name: unifi-websocket
+      namespace: unifi
+    - name: unifi-compression
+      namespace: unifi
+    - name: unifi-rate-limit
+      namespace: unifi
+    services:
+    - name: unifi-ingress
+      port: 8080
+      scheme: http

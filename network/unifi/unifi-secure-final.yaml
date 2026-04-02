@@ -1,0 +1,28 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: unifi-secure
+  namespace: unifi
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - match: Host(`unifi.waushop.ee`)
+    kind: Rule
+    middlewares:
+    - name: unifi-ip-whitelist
+      namespace: unifi
+    services:
+    - name: unifi-ingress
+      port: 8443
+      scheme: https
+      serversTransport: unifi-https-transport
+  tls:
+    domains:
+    - main: unifi.waushop.ee
+    options:
+      name: unifi-tls-options
+      namespace: unifi
+    secretName: unifi-tls

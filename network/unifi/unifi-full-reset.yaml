@@ -1,0 +1,41 @@
+# Full UniFi Reset Script
+# This will completely wipe all UniFi data for a fresh start
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: unifi-full-reset
+  namespace: unifi
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: unifi-data
+        persistentVolumeClaim:
+          claimName: unifi-pvc
+      containers:
+      - name: reset
+        image: ubuntu:22.04
+        command:
+        - bash
+        - -c
+        - |
+          echo "🔥 Starting FULL UniFi Controller Reset..."
+
+          # Create backup of everything (just in case)
+          echo "💾 Creating emergency backup..."
+          cp -r /unifi/data /unifi/emergency-backup-$(date +%Y%m%d-%H%M%S) || true
+
+          # Remove EVERYTHING except the volume structure
+          echo "🗑️ Removing all UniFi data..."
+          find /unifi/data -mindepth 1 -delete
+
+          echo "✅ Full reset complete! UniFi will start completely fresh."
+          echo "🚨 You'll need to set up everything from scratch!"
+        volumeMounts:
+        - name: unifi-data
+          mountPath: /unifi/data
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0

@@ -1,0 +1,97 @@
+# Default values for MySQL
+# This is a YAML-formatted file.
+
+# Chart configuration
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespace configuration
+namespace: "mysql"
+
+# External Secrets Configuration
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStore: cluster-secret-store
+  secretStoreKind: ClusterSecretStore
+  remoteRefs:
+    rootPassword: wauhost/mysql/root-password
+    databasePasswords: wauhost/mysql/databases
+
+# MySQL Authentication
+auth:
+  # Root password managed by External Secrets
+  # Set this only for development/testing when externalSecrets.enabled=false
+  rootPassword: ""  # Override with external secret
+
+# Database configuration
+databases:
+  - name: "vausiim"
+    user: "vausiim"
+    # Password managed by External Secrets
+    # Set this only for development/testing when externalSecrets.enabled=false
+    password: ""  # Override with external secret
+  - name: "agrofort"
+    user: "agrofort"
+    # Password managed by External Secrets
+    password: ""  # Override with external secret
+
+# Storage configuration
+pvc:
+  size: "10Gi"
+  storageClass: ""  # Use default storage class
+  accessMode: "ReadWriteOnce"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 3306
+
+# MySQL Configuration
+mysql:
+  # MySQL server configuration
+  config: |
+    [mysqld]
+    # Performance and memory settings
+    innodb_buffer_pool_size = 512M
+    innodb_log_file_size = 128M
+    max_connections = 200
+    
+    # Security settings
+    bind-address = 0.0.0.0
+    skip-name-resolve
+    
+    # Character set
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+    
+    # Logging
+    log-error = /var/log/mysql/error.log
+    slow_query_log = 1
+    slow_query_log_file = /var/log/mysql/slow.log
+    long_query_time = 2
+
+# Resource configuration
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+
+# Security configuration
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 999  # mysql user
+  runAsGroup: 999
+  fsGroup: 999
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: false
+
+# Node scheduling
+nodeSelector: {}
+affinity: {}
+tolerations: []

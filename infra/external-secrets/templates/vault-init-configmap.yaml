@@ -1,0 +1,104 @@
+{{- if and .Values.vault.enabled .Values.vault.init.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.vault.name }}-init-scripts
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault-init
+data:
+  init-vault.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Waiting for Vault to be ready..."
+    until vault status 2>/dev/null; do
+      echo "Vault is not ready yet..."
+      sleep 2
+    done
+    
+    # Check if Vault is already initialized
+    if vault status | grep -q "Initialized.*true"; then
+      echo "Vault is already initialized"
+    else
+      echo "Initializing Vault..."
+      vault operator init \
+        -key-shares={{ .Values.vault.init.keyShares }} \
+        -key-threshold={{ .Values.vault.init.keyThreshold }} \
+        -format=json > /tmp/init.json
+      
+      # Store init keys in Kubernetes secret
+      kubectl create secret generic {{ .Values.vault.name }}-init \
+        --from-file=init.json=/tmp/init.json \
+        -n {{ .Values.vault.namespace }} || true
+      
+      # Auto-unseal if in dev mode
+      {{- if .Values.vault.init.autoUnseal }}
+      echo "Auto-unsealing Vault..."
+      for i in $(seq 1 {{ .Values.vault.init.keyThreshold }}); do
+        key=$(cat /tmp/init.json | jq -r ".unseal_keys_b64[$(($i-1))]")
+        vault operator unseal $key
+      done
+      {{- end }}
+      
+      rm -f /tmp/init.json
+    fi
+    
+    # Wait for unsealed status
+    echo "Waiting for Vault to be unsealed..."
+    until vault status | grep -q "Sealed.*false"; do
+      echo "Vault is still sealed..."
+      sleep 2
+    done
+    
+    echo "Vault is unsealed and ready!"
+    
+    # Login with root token
+    {{- if .Values.vault.init.rootToken }}
+    export VAULT_TOKEN="{{ .Values.vault.init.rootToken }}"
+    {{- else }}
+    export VAULT_TOKEN=$(kubectl get secret {{ .Values.vault.name }}-init -n {{ .Values.vault.namespace }} -o jsonpath='{.data.init\.json}' | base64 -d | jq -r '.root_token')
+    {{- end }}
+    
+    # Enable KV v2 secrets engine
+    vault secrets list | grep -q "^secret/" || vault secrets enable -version=2 -path=secret kv
+    
+    # Enable Kubernetes auth
+    vault auth list | grep -q "^kubernetes/" || vault auth enable kubernetes
+    
+    # Configure Kubernetes auth
+    vault write auth/kubernetes/config \
+      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443" \
+      kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+      token_reviewer_jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token
+    
+    # Create policy for external-secrets
+    vault policy write external-secrets - <<EOF
+    path "secret/data/*" {
+      capabilities = ["read", "list"]
+    }
+    path "secret/metadata/*" {
+      capabilities = ["list"]
+    }
+    EOF
+    
+    # Create role for external-secrets
+    vault write auth/kubernetes/role/external-secrets \
+      bound_service_account_names={{ include "external-secrets.serviceAccountName" . }} \
+      bound_service_account_namespaces={{ .Release.Namespace }} \
+      policies=external-secrets \
+      ttl=1h
+    
+    # Create initial secrets
+    {{- range $path, $data := .Values.vault.init.secrets }}
+    echo "Creating secret at {{ $path }}..."
+    vault kv put {{ $path }} \
+      {{- range $key, $value := $data }}
+      {{ $key }}="{{ $value }}" \
+      {{- end }}
+    {{- end }}
+    
+    echo "Vault initialization complete!"
+{{- end }}

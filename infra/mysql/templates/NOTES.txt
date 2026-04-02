@@ -1,0 +1,116 @@
+{{- $fullName := include "mysql.fullname" . -}}
+🎉 MySQL has been deployed successfully!
+
+📋 Service Information:
+   Namespace: {{ .Values.namespace }}
+   Release:   {{ .Release.Name }}
+   Port:      {{ .Values.service.port }}
+
+🔌 Connection Details:
+   Host: mysql.{{ .Values.namespace }}.svc.cluster.local
+   Port: {{ .Values.service.port }}
+
+{{- if .Values.externalSecrets.enabled }}
+🔐 Credentials:
+   Credentials are managed by External Secrets.
+   Secret Name: {{ $fullName }}-auth
+   
+   To retrieve credentials from your secret backend:
+   kubectl get externalsecret {{ $fullName }}-auth -n {{ .Values.namespace }}
+{{- else }}
+⚠️  WARNING: Using local secrets. Consider enabling External Secrets for production!
+   
+   Get root password:
+   export MYSQL_ROOT_PASSWORD=$(kubectl get secret mysql-secret -n {{ .Values.namespace }} -o jsonpath="{.data.mysql-root-password}" | base64 -d)
+{{- end }}
+
+📊 Configured Databases:
+{{- range .Values.databases }}
+   - Database: {{ .name }}
+     User: {{ .user }}
+{{- end }}
+
+🔧 MySQL Client Connection:
+   # Connect from within cluster
+   kubectl run -it --rm --image=mysql:8.0 mysql-client -- \
+     mysql -h mysql.{{ .Values.namespace }}.svc.cluster.local -u root -p
+
+   # Port-forward for local access
+   kubectl port-forward -n {{ .Values.namespace }} svc/mysql {{ .Values.service.port }}:{{ .Values.service.port }}
+   mysql -h 127.0.0.1 -P {{ .Values.service.port }} -u root -p
+
+💾 Storage:
+   PVC Size: {{ .Values.pvc.size }}
+   PVC Name: mysql-data
+   
+   Check PVC status:
+   kubectl get pvc -n {{ .Values.namespace }}
+
+{{- if .Values.networkPolicy.enabled }}
+🔒 Security:
+   ✓ Network Policy enabled
+   ✓ RBAC configured
+   ✓ Pod Security Standards applied
+{{- end }}
+
+📊 Monitoring:
+   # Check MySQL status
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- mysqladmin -u root -p status
+   
+   # View slow queries
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- \
+     mysql -u root -p -e "SELECT * FROM mysql.slow_log ORDER BY start_time DESC LIMIT 10;"
+   
+   # Check connections
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- \
+     mysql -u root -p -e "SHOW PROCESSLIST;"
+
+🛠️ Common Operations:
+
+1. **Create Database Backup**:
+   ```bash
+   # Manual backup
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- \
+     mysqldump -u root -p --all-databases --single-transaction > backup.sql
+   
+   # Backup specific database
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- \
+     mysqldump -u root -p {{ (index .Values.databases 0).name }} > {{ (index .Values.databases 0).name }}-backup.sql
+   ```
+
+2. **Restore from Backup**:
+   ```bash
+   # Restore all databases
+   kubectl exec -i -n {{ .Values.namespace }} deployment/mysql -- \
+     mysql -u root -p < backup.sql
+   ```
+
+3. **Create New User**:
+   ```bash
+   kubectl exec -it -n {{ .Values.namespace }} deployment/mysql -- \
+     mysql -u root -p -e "CREATE USER 'newuser'@'%' IDENTIFIED BY 'password'; \
+     GRANT ALL PRIVILEGES ON newdb.* TO 'newuser'@'%'; FLUSH PRIVILEGES;"
+   ```
+
+📚 Best Practices:
+   1. Regular automated backups
+   2. Monitor slow query log
+   3. Use connection pooling in applications
+   4. Set appropriate resource limits
+   5. Enable binary logging for point-in-time recovery
+
+🆘 Troubleshooting:
+   # Check pod status
+   kubectl get pods -n {{ .Values.namespace }} -l app=mysql
+   
+   # View logs
+   kubectl logs -n {{ .Values.namespace }} deployment/mysql --tail=100
+   
+   # Check events
+   kubectl get events -n {{ .Values.namespace }} --field-selector involvedObject.name=mysql
+   
+   # MySQL error log
+   kubectl exec -n {{ .Values.namespace }} deployment/mysql -- \
+     tail -f /var/log/mysql/error.log
+
+For more information, visit: https://dev.mysql.com/doc/

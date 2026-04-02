@@ -1,0 +1,47 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: unifi-websocket
+  namespace: unifi
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-Host: "unifi.waushop.ee"
+    accessControlAllowMethods:
+      - GET
+      - OPTIONS
+      - POST
+      - PUT
+      - DELETE
+      - PATCH
+    accessControlAllowOriginList:
+      - "https://unifi.waushop.ee"
+    accessControlAllowHeaders:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+      - "Accept"
+      - "Origin"
+    accessControlAllowCredentials: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: unifi-compression
+  namespace: unifi
+spec:
+  compress:
+    excludedContentTypes:
+      - text/event-stream
+      - application/grpc
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: unifi-rate-limit
+  namespace: unifi
+spec:
+  rateLimit:
+    average: 100
+    burst: 200

@@ -1,0 +1,52 @@
+{{- if and .Values.vault.enabled (not .Values.vault.dev.enabled) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.vault.name }}-config
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+data:
+  vault.hcl: |
+    ui = true
+    
+    listener "tcp" {
+      tls_disable = {{ if .Values.vault.tls.enabled }}0{{ else }}1{{ end }}
+      address = "[::]:8200"
+      cluster_address = "[::]:8201"
+      {{- if .Values.vault.tls.enabled }}
+      tls_cert_file = "/vault/tls/tls.crt"
+      tls_key_file  = "/vault/tls/tls.key"
+      {{- end }}
+    }
+    
+    storage "file" {
+      path = "/vault/data"
+    }
+    
+    # Enable auto-unseal using Kubernetes secrets
+    {{- if .Values.vault.unseal.kubernetes.enabled }}
+    seal "transit" {
+      address = "http://{{ .Values.vault.name }}-transit.{{ .Values.vault.namespace }}.svc.cluster.local:8200"
+      disable_renewal = "false"
+      key_name = "autounseal"
+      mount_path = "transit/"
+    }
+    {{- end }}
+    
+    # Telemetry
+    telemetry {
+      prometheus_retention_time = "30s"
+      disable_hostname = true
+    }
+    
+    api_addr = "{{ if .Values.vault.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8200"
+    cluster_addr = "https://{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8201"
+    
+    log_level = "{{ .Values.vault.logLevel }}"
+    
+    default_lease_ttl = "{{ .Values.vault.defaultLeaseTTL }}"
+    max_lease_ttl = "{{ .Values.vault.maxLeaseTTL }}"
+{{- end }}

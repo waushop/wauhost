@@ -1,0 +1,48 @@
+{{- if .Values.vault.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "external-secrets.fullname" . }}-vault-auth-delegator
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: {{ include "external-secrets.serviceAccountName" . }}-vault
+  namespace: {{ .Values.vault.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "external-secrets.fullname" . }}-vault-secrets
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "external-secrets.fullname" . }}-vault-secrets
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "external-secrets.fullname" . }}-vault-secrets
+subjects:
+- kind: ServiceAccount
+  name: {{ include "external-secrets.serviceAccountName" . }}-vault
+  namespace: {{ .Values.vault.namespace }}
+{{- end }}

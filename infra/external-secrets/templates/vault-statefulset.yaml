@@ -1,0 +1,108 @@
+{{- if .Values.vault.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.vault.name }}
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    {{- include "external-secrets.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  serviceName: {{ .Values.vault.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.vault.name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.vault.name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: vault
+    spec:
+      serviceAccountName: {{ include "external-secrets.serviceAccountName" . }}-vault
+      securityContext:
+        {{- toYaml .Values.vault.podSecurityContext | nindent 8 }}
+      containers:
+      - name: vault
+        securityContext:
+          {{- toYaml .Values.vault.securityContext | nindent 10 }}
+        image: "{{ .Values.vault.image.repository }}:{{ .Values.vault.image.tag }}"
+        imagePullPolicy: {{ .Values.vault.image.pullPolicy }}
+        ports:
+        - containerPort: 8200
+          name: vault
+        env:
+        {{- if .Values.vault.dev.enabled }}
+        - name: VAULT_DEV_ROOT_TOKEN_ID
+          value: {{ .Values.vault.dev.rootToken | quote }}
+        - name: VAULT_DEV_LISTEN_ADDRESS
+          value: "0.0.0.0:8200"
+        {{- end }}
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_API_ADDR
+          value: "http://{{ .Values.vault.name }}.{{ .Values.vault.namespace }}.svc.cluster.local:8200"
+        command: 
+        {{- if .Values.vault.dev.enabled }}
+          - vault
+          - server
+          - -dev
+        {{- else }}
+          - vault
+          - server
+          - -config=/vault/config/vault.hcl
+        {{- end }}
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/data
+        {{- if not .Values.vault.dev.enabled }}
+        - name: vault-config
+          mountPath: /vault/config
+        {{- end }}
+        {{- if .Values.vault.tls.enabled }}
+        - name: vault-tls
+          mountPath: /vault/tls
+          readOnly: true
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /v1/sys/health?standbyok=true
+            port: 8200
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.vault.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.vault.livenessProbe.periodSeconds }}
+        readinessProbe:
+          httpGet:
+            path: /v1/sys/health?standbyok=true
+            port: 8200
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.vault.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.vault.readinessProbe.periodSeconds }}
+        resources:
+          {{- toYaml .Values.vault.resources | nindent 10 }}
+      volumes:
+      {{- if not .Values.vault.dev.enabled }}
+      - name: vault-config
+        configMap:
+          name: {{ .Values.vault.name }}-config
+      {{- end }}
+      {{- if .Values.vault.tls.enabled }}
+      - name: vault-tls
+        secret:
+          secretName: {{ .Values.vault.name }}-tls
+      {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: vault-data
+    spec:
+      accessModes: {{ .Values.vault.persistence.accessModes }}
+      resources:
+        requests:
+          storage: {{ .Values.vault.persistence.size }}
+      {{- if .Values.vault.persistence.storageClass }}
+      storageClassName: {{ .Values.vault.persistence.storageClass }}
+      {{- end }}
+{{- end }}
