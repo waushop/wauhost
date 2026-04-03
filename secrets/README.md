@@ -46,5 +46,5 @@ Same process as creating — kubeseal will produce a new encrypted value. Commit
 | mysql.yaml | mysql | mysql-secret | mysql-root-password |
 | agrofort.yaml | agrofort | web-secrets | DB_PASSWORD, JWT_SECRET, RESEND_API_KEY, + 11 more |
 | kraman.yaml | kraman | web-secrets | DB_PASSWORD, DB_USER, JWT_SECRET, SMTP creds, + 8 more |
-| onebetwonder.yaml | onebetwonder | web-secrets | DB_PASSWORD, JWT_SECRET, SYNC_SECRET, WC2026_API_KEY |
+| onebetwonder.yaml | onebetwonder | web-secrets | DB_PASSWORD, JWT_SECRET, SYNC_SECRET, WC2026_API_KEY, FOOTBALL_DATA_API_KEY |
 | vausiim.yaml | vausiim | vausiim-ghost-secrets | database__connection__password, mail__options__auth__pass |
