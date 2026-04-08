@@ -20,7 +20,7 @@
    Database: {{ .Values.database.database }}
    User: {{ .Values.database.user }}
    
-   {{- if .Values.externalSecrets.enabled }}
+   {{- if and .Values.externalSecrets .Values.externalSecrets.enabled }}
    Database password is managed by External Secrets.
    Secret Name: {{ $fullName }}-secrets
    {{- else }}
@@ -32,7 +32,7 @@
    Service: {{ .Values.mail.options.service }}
    From: {{ .Values.mail.from }}
    
-   {{- if .Values.externalSecrets.enabled }}
+   {{- if and .Values.externalSecrets .Values.externalSecrets.enabled }}
    Mail credentials are managed by External Secrets.
    {{- else }}
    ⚠️  WARNING: Using local mail credentials. Enable External Secrets for production!
@@ -54,7 +54,7 @@
    3. Configure site settings
    4. Start publishing!
 
-{{- if .Values.networkPolicy.enabled }}
+{{- if and .Values.networkPolicy .Values.networkPolicy.enabled }}
 🔒 Security:
    ✓ Network Policy enabled
    ✓ RBAC configured

@@ -10,7 +10,7 @@
    Host: mysql.{{ .Values.namespace }}.svc.cluster.local
    Port: {{ .Values.service.port }}
 
-{{- if .Values.externalSecrets.enabled }}
+{{- if and .Values.externalSecrets .Values.externalSecrets.enabled }}
 🔐 Credentials:
    Credentials are managed by External Secrets.
    Secret Name: {{ $fullName }}-auth
@@ -46,7 +46,7 @@
    Check PVC status:
    kubectl get pvc -n {{ .Values.namespace }}
 
-{{- if .Values.networkPolicy.enabled }}
+{{- if and .Values.networkPolicy .Values.networkPolicy.enabled }}
 🔒 Security:
    ✓ Network Policy enabled
    ✓ RBAC configured
