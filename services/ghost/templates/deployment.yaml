@@ -44,6 +44,16 @@ spec:
               cd "$TARGET" && npm install --production 2>&1
               rm -rf /tmp/node_modules /tmp/package-lock.json
               echo "S3 adapter installed."
+
+              # Patch Ghost config to use S3 storage adapter
+              CONFIG="/var/lib/ghost/config.production.json"
+              node -e "
+                const fs = require('fs');
+                const cfg = JSON.parse(fs.readFileSync('$CONFIG'));
+                cfg.storage = { active: 's3', s3: {} };
+                fs.writeFileSync('$CONFIG', JSON.stringify(cfg, null, 2));
+              "
+              echo "Ghost config patched with S3 storage adapter."
           securityContext:
             runAsUser: 0
           volumeMounts:
