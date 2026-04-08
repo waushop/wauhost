@@ -21,8 +21,9 @@ spec:
       retries: 3
   values:
     adminUser:
-      create: false
+      create: true
       username: admin
+      passwordHash: "$2y$10$z8QNz6nJU3PZo..3YRIVjeQKtK47j93d5C6uGciTaKSrVOaJ.Aj8q"
     resources:
       requests:
         cpu: 50m
