@@ -40,6 +40,7 @@ spec:
         bucket: "vausiim"
         region: "hel1"
         forcePathStyle: true
+        assetHost: "https://hel1.your-objectstorage.com/vausiim"
 
     database:
       host: mysql.mysql.svc.cluster.local
