@@ -4,9 +4,11 @@ metadata:
   name: cert-manager-issuer
   namespace: flux-system
 spec:
-  releaseName: cert-manager
+  releaseName: cert-manager-issuer
   targetNamespace: cert-manager
   interval: 30m
+  dependsOn:
+    - name: cert-manager
   chart:
     spec:
       chart: ./infra/cert-manager

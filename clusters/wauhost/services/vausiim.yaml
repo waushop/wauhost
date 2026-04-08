@@ -28,6 +28,9 @@ spec:
     releaseName: vausiim
     host: "vausiim.ee"
 
+    pvc:
+      storageClassName: local-path
+
     database:
       host: mysql.mysql.svc.cluster.local
       user: vausiim

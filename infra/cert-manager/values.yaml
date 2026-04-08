@@ -7,7 +7,7 @@ fullnameOverride: ""
 
 # Cert-manager configuration
 certManager:
-  email: admin@example.com
+  email: info@waushop.ee
   acmeServer: https://acme-v02.api.letsencrypt.org/directory
   ingressClass: traefik
 
