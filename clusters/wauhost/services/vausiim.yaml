@@ -10,6 +10,7 @@ spec:
   chart:
     spec:
       chart: ./services/ghost
+      reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
         name: flux-system

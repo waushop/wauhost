@@ -12,6 +12,7 @@ spec:
   chart:
     spec:
       chart: ./infra/cert-manager
+      reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
         name: flux-system
