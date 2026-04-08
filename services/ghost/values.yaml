@@ -41,6 +41,16 @@ pvc:
   storageClassName: ""  # Use cluster default
   accessMode: ReadWriteOnce
 
+# S3 Storage Adapter (for images/media)
+storage:
+  active: ""  # Set to "s3" to enable S3 storage
+  s3:
+    endpoint: ""
+    bucket: ""
+    region: ""
+    forcePathStyle: true  # Required for non-AWS S3 (Hetzner, MinIO, etc.)
+    assetHost: ""  # Optional: custom domain/CDN for serving images
+
 # -----------------------------------------------------------------------------
 # Service Configuration
 # -----------------------------------------------------------------------------

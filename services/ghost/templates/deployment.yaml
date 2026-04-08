@@ -27,6 +27,31 @@ spec:
       securityContext:
         fsGroup: {{ .Values.podSecurityContext.fsGroup }}
       {{- end }}
+      {{- if eq (.Values.storage.active | default "") "s3" }}
+      initContainers:
+        - name: install-s3-adapter
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ['sh', '-c']
+          args:
+            - |
+              TARGET="/var/lib/ghost/content/adapters/storage/s3"
+              if [ ! -f "$TARGET/index.js" ]; then
+                echo "Installing ghost-storage-adapter-s3..."
+                mkdir -p /var/lib/ghost/content/adapters/storage
+                cd /tmp
+                npm install ghost-storage-adapter-s3 --no-save 2>&1
+                cp -r node_modules/ghost-storage-adapter-s3 "$TARGET"
+                rm -rf /tmp/node_modules /tmp/package-lock.json
+                echo "S3 adapter installed."
+              else
+                echo "S3 adapter already installed."
+              fi
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: ghost-content
+              mountPath: /var/lib/ghost/content
+      {{- end }}
       containers:
         - name: ghost
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -88,7 +113,35 @@ spec:
             - name: mail__from
               value: "{{ .Values.mail.from }}"
             {{- end }}
-            
+
+            {{- if eq (.Values.storage.active | default "") "s3" }}
+            # S3 Storage Configuration
+            - name: storage__active
+              value: "s3"
+            - name: storage__s3__accessKeyId
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: storage__s3__accessKeyId
+            - name: storage__s3__secretAccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: storage__s3__secretAccessKey
+            - name: storage__s3__bucket
+              value: {{ .Values.storage.s3.bucket | quote }}
+            - name: storage__s3__endpoint
+              value: {{ .Values.storage.s3.endpoint | quote }}
+            - name: storage__s3__region
+              value: {{ .Values.storage.s3.region | quote }}
+            - name: storage__s3__forcePathStyle
+              value: {{ .Values.storage.s3.forcePathStyle | default true | toString | quote }}
+            {{- if .Values.storage.s3.assetHost }}
+            - name: storage__s3__assetHost
+              value: {{ .Values.storage.s3.assetHost | quote }}
+            {{- end }}
+            {{- end }}
+
             # Privacy & Performance Configuration
             - name: privacy__useUpdateCheck
               value: "{{ .Values.ghost.config.privacy.useUpdateCheck | default false | toString }}"

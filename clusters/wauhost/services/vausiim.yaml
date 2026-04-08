@@ -32,6 +32,14 @@ spec:
     pvc:
       storageClassName: local-path
 
+    storage:
+      active: s3
+      s3:
+        endpoint: ""   # TODO: Hetzner Object Storage endpoint
+        bucket: ""     # TODO: bucket name
+        region: ""     # TODO: e.g. fsn1
+        forcePathStyle: true
+
     database:
       host: mysql.mysql.svc.cluster.local
       user: vausiim
