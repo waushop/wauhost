@@ -22,6 +22,8 @@ spec:
     remediation:
       retries: 3
   values:
+    externalSecrets:
+      enabled: false
     namespace: vausiim
     releaseName: vausiim
     host: "vausiim.ee"
