@@ -35,17 +35,15 @@ spec:
           args:
             - |
               TARGET="/var/lib/ghost/content/adapters/storage/s3"
-              if [ ! -f "$TARGET/index.js" ]; then
-                echo "Installing ghost-storage-adapter-s3..."
-                mkdir -p /var/lib/ghost/content/adapters/storage
-                cd /tmp
-                npm install ghost-storage-adapter-s3 --no-save 2>&1
-                cp -r node_modules/ghost-storage-adapter-s3 "$TARGET"
-                rm -rf /tmp/node_modules /tmp/package-lock.json
-                echo "S3 adapter installed."
-              else
-                echo "S3 adapter already installed."
-              fi
+              echo "Installing ghost-storage-adapter-s3..."
+              rm -rf "$TARGET"
+              mkdir -p /var/lib/ghost/content/adapters/storage
+              cd /tmp
+              npm install ghost-storage-adapter-s3 --no-save 2>&1
+              cp -r node_modules/ghost-storage-adapter-s3 "$TARGET"
+              cd "$TARGET" && npm install --production 2>&1
+              rm -rf /tmp/node_modules /tmp/package-lock.json
+              echo "S3 adapter installed."
           securityContext:
             runAsUser: 0
           volumeMounts:
