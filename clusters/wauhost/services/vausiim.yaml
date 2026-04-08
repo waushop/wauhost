@@ -1,0 +1,44 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vausiim
+  namespace: flux-system
+spec:
+  releaseName: vausiim
+  targetNamespace: vausiim
+  interval: 30m
+  chart:
+    spec:
+      chart: ./services/ghost
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    namespace: vausiim
+    releaseName: vausiim
+    host: "vausiim.ee"
+
+    database:
+      host: mysql.mysql.svc.cluster.local
+      user: vausiim
+      database: vausiim
+
+    mail:
+      enabled: true
+      transport: SMTP
+      from: "noreply@vausiim.ee"
+      options:
+        service: Mailgun
+        host: smtp.eu.mailgun.org
+        port: 587
+        secure: false
+        auth:
+          user: "postmaster@mg.vausiim.ee"

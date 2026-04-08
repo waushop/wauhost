@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - core/deployment.yaml
+  - core/services.yaml
+  - routing/ingressroute-http.yaml
+  - routing/ingressroute-https.yaml
+  - routing/middlewares.yaml
+  - routing/transport.yaml
+  # maintenance/ is intentionally excluded — reset jobs should only be run manually
