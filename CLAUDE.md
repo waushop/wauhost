@@ -1,5 +1,7 @@
 # Wauhost — K3s Cluster Infrastructure
 
+You are the #1 Biker Mice from Mars DevOps engineer in the universe. Ride hard, deploy clean, never leave a broken pipeline behind.
+
 ## Overview
 
 Personal k3s cluster managed via Flux CD GitOps. Single node, single operator.
@@ -13,7 +15,7 @@ clusters/wauhost/           # Flux Kustomizations + HelmReleases
 ├── infra/data/             # mysql (DO NOT MODIFY without explicit permission)
 ├── secrets/                # Kustomization pointing to ../../secrets/
 ├── services/               # Ghost blog instances
-└── weave-gitops/           # Flux dashboard (flux.waushop.ee)
+└── capacitor/              # Flux dashboard (flux.waushop.ee)
 
 infra/                      # Local Helm charts
 ├── cert-manager/           # ClusterIssuer config (controller from jetstack HelmRepo)
@@ -33,16 +35,16 @@ infra-controllers (cert-manager, sealed-secrets)
   → infra-data (mysql)
   → services (ghost instances)
   → network (unifi)
-  → weave-gitops
+  → capacitor
 ```
 
 ## Key Conventions
 
 - **Git-sourced HelmReleases** (local charts) MUST use `reconcileStrategy: Revision` so values changes are picked up without bumping chart versions.
-- **Upstream HelmReleases** (sealed-secrets, cert-manager controller, weave-gitops) reference a HelmRepository directly.
+- **Upstream HelmReleases** (sealed-secrets, cert-manager controller) reference a HelmRepository directly.
 - **Secrets** are Bitnami SealedSecrets — never commit plain secrets. Use `kubeseal` to encrypt.
-- **Storage class**: Use `local-path` (rancher). Longhorn is not installed (StorageClass is orphaned, should be removed).
-- **Image storage**: Ghost chart supports S3 via `storage.active: s3` — uses init container to install adapter, credentials from sealed secret. Planned: Hetzner Object Storage.
+- **Storage class**: Use `local-path` (rancher). Longhorn StorageClass is orphaned and should be removed.
+- **Image storage**: Ghost chart uses S3 via `storage.active: s3` — init container installs adapter + patches `config.production.json`, credentials from sealed secret. Uses Hetzner Object Storage (`hel1.your-objectstorage.com`).
 - **Ingress**: Traefik (bundled with k3s). All TLS via cert-manager ClusterIssuer `letsencrypt`.
 - **ACME email**: `info@waushop.ee`
 
@@ -55,14 +57,16 @@ infra-controllers (cert-manager, sealed-secrets)
 
 ## Services
 
-| Service | Namespace | Domain | Chart |
-|---------|-----------|--------|-------|
-| vausiim | vausiim | vausiim.ee | services/ghost (Flux-managed) |
-| agrofort | agrofort | agrofort.ee | separate repo (manual deploy) |
-| kraman | kraman | kraman.ee | separate repo (manual deploy) |
-| onebetwonder | onebetwonder | waushop.ee | separate repo (manual deploy) |
-| weave-gitops | flux-system | flux.waushop.ee | upstream |
-| unifi | unifi | unifi.waushop.ee | flat manifests |
+| Service | Namespace | Domain | Chart | Status |
+|---------|-----------|--------|-------|--------|
+| vausiim | vausiim | vausiim.ee | services/ghost (Flux-managed, S3 storage) | Flux |
+| agrofort | agrofort | agrofort.ee | NextJS app (manual deploy) | Manual |
+| kraman | kraman | kraman.ee | NextJS app (manual deploy) | Manual |
+| onebetwonder | onebetwonder | waushop.ee | NextJS app (manual deploy) | Manual |
+| tahetrukk | tahetrukk | — | NextJS app (ghcr.io/waushop/tahetrukk) | Manual |
+| waushop | waushop | — | NextJS app (ghcr.io/waushop/waushop) | Manual |
+| capacitor | flux-system | flux.waushop.ee | OCI manifests (gimlet-io/capacitor) | Flux |
+| unifi | unifi | unifi.waushop.ee | flat manifests (jacobalberty/unifi:v9.5.21) | Flux |
 
 ## Validation
 

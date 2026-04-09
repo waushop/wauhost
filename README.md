@@ -1,53 +1,65 @@
 # Wauhost Kubernetes Infrastructure
 
-Helm charts for running shared cluster infrastructure, services, and network configuration.
+Personal k3s cluster managed via Flux CD GitOps. Single node, single operator.
 
 ## Repository Structure
 
 ```
 wauhost/
-├── infra/                      # Cluster-wide infrastructure
-│   ├── cert-manager/           # TLS certificates (ClusterIssuer + Let's Encrypt)
-│   ├── sealed-secrets/         # Bitnami Sealed Secrets controller
-│   └── mysql/                  # Shared MySQL instance
-├── services/                   # Deployable service templates
-│   └── ghost/                  # Ghost blog (deployed as multiple instances)
-├── secrets/                    # Sealed secrets (encrypted, safe in git)
-└── network/                    # Network / ingress configuration
-    └── unifi/                  # UniFi controller networking
+├── clusters/wauhost/           # Flux Kustomizations + HelmReleases
+│   ├── flux-system/            # Flux bootstrap (gotk-components, gotk-sync)
+│   ├── infra/controllers/      # cert-manager, sealed-secrets
+│   ├── infra/data/             # mysql
+│   ├── secrets/                # Kustomization pointing to ../../secrets/
+│   ├── services/               # Ghost blog instances
+│   ├── weave-gitops/           # Flux dashboard (flux.waushop.ee)
+│   └── network.yaml            # UniFi controller
+├── infra/                      # Local Helm charts
+│   ├── cert-manager/           # ClusterIssuer config
+│   ├── mysql/                  # MySQL deployment
+│   └── sealed-secrets/         # Sealed Secrets controller
+├── services/                   # Reusable service charts
+│   └── ghost/                  # Ghost blog (S3 storage via Hetzner Object Storage)
+├── secrets/                    # Bitnami SealedSecrets (encrypted, safe in git)
+└── network/                    # Network configuration
+    └── unifi/                  # UniFi controller (flat manifests)
 ```
 
-## Deployment Order
+## Flux Dependency Chain
 
 ```
-1. infra/sealed-secrets     → Sealed Secrets controller
-2. infra/cert-manager       → ClusterIssuer for TLS
-3. infra/mysql              → Shared database
-4. secrets/                 → Apply sealed secrets
-5. services/ghost           → Blog instances (one release per site)
-6. network/unifi            → UniFi controller routing
+infra-controllers (cert-manager, sealed-secrets)
+  → secrets (sealed secrets)
+  → infra-data (mysql)
+  → services (ghost instances)
+  → network (unifi)
+  → weave-gitops
 ```
+
+All resources are reconciled automatically by Flux from git.
 
 ## Prerequisites
 
 - k3s cluster with kubeconfig
 - Traefik ingress controller (bundled with k3s)
 - DNS records pointing to the cluster
+- `kubeseal` CLI for encrypting secrets
 
 ## Deploying
 
-Each chart is deployed with Helm:
+Managed by Flux CD — push to `main` and Flux reconciles automatically.
 
 ```bash
-# Infrastructure
-helm dependency build ./infra/sealed-secrets
-helm install sealed-secrets ./infra/sealed-secrets -n sealed-secrets --create-namespace
-helm install cert-manager ./infra/cert-manager -n cert-manager --create-namespace
-helm install mysql ./infra/mysql -n mysql --create-namespace
+# Force reconcile
+flux reconcile kustomization flux-system -n flux-system
 
-# Secrets (after sealing with kubeseal, see secrets/README.md)
-kubectl apply -f secrets/
+# Check status
+kubectl get helmrelease -A
+kubectl get kustomization -A
 
-# Ghost blog instance (one per site, with per-site values)
-helm install my-blog ./services/ghost -n my-blog --create-namespace -f my-blog-values.yaml
+# Seal a secret
+kubectl create secret generic my-secret -n my-ns \
+  --from-literal=key=value --dry-run=client -o yaml | \
+  kubeseal --controller-name=sealed-secrets \
+  --controller-namespace=sealed-secrets --format yaml > secrets/my-secret.yaml
 ```
