@@ -15,7 +15,6 @@ clusters/wauhost/           # Flux Kustomizations + HelmReleases
 ├── infra/data/             # mysql (DO NOT MODIFY without explicit permission)
 ├── secrets/                # Kustomization pointing to ../../secrets/
 ├── services/               # Ghost blog instances
-└── capacitor/              # Flux dashboard (flux.waushop.ee)
 
 infra/                      # Local Helm charts
 ├── cert-manager/           # ClusterIssuer config (controller from jetstack HelmRepo)
@@ -35,7 +34,6 @@ infra-controllers (cert-manager, sealed-secrets)
   → infra-data (mysql)
   → services (ghost instances)
   → network (unifi)
-  → capacitor
 ```
 
 ## Key Conventions
@@ -65,7 +63,6 @@ infra-controllers (cert-manager, sealed-secrets)
 | onebetwonder | onebetwonder | waushop.ee | NextJS app (manual deploy) | Manual |
 | tahetrukk | tahetrukk | — | NextJS app (ghcr.io/waushop/tahetrukk) | Manual |
 | waushop | waushop | — | NextJS app (ghcr.io/waushop/waushop) | Manual |
-| capacitor | flux-system | flux.waushop.ee | OCI manifests (gimlet-io/capacitor) | Flux |
 | unifi | unifi | unifi.waushop.ee | flat manifests (jacobalberty/unifi:v9.5.21) | Flux |
 
 ## Validation
