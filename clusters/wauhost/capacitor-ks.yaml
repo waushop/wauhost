@@ -53,7 +53,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: capacitor
+      app.kubernetes.io/name: onechart
   ingress:
     - {}
   policyTypes:
