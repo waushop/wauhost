@@ -19,4 +19,4 @@ spec:
     solvers:
       - http01:
           ingress:
-            class: {{ .Values.certManager.ingressClass | quote }}
+            ingressClassName: {{ .Values.certManager.ingressClass | quote }}
