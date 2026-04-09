@@ -33,6 +33,10 @@ metadata:
     traefik.ingress.kubernetes.io/router.priority: "1"
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - gitops.waushop.ee
+      secretName: capacitor-tls
   rules:
     - host: gitops.waushop.ee
       http:
