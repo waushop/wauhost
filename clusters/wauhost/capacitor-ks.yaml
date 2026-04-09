@@ -55,9 +55,7 @@ metadata:
   name: allow-capacitor-ingress
   namespace: flux-system
 spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: onechart
+  podSelector: {}
   ingress:
     - {}
   policyTypes:
