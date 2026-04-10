@@ -1,0 +1,24 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tahetrukk
+  namespace: flux-system
+spec:
+  releaseName: web
+  targetNamespace: tahetrukk
+  interval: 30m
+  chart:
+    spec:
+      chart: ./services/tahetrukk
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3

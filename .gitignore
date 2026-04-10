@@ -86,6 +86,7 @@ site/
 backup/
 backups/
 *.backup
+*.sql
 
 # Local development
 local/
