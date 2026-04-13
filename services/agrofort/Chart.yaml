@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agrofort
+description: A Helm chart for Agrofort website
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
