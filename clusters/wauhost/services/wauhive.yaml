@@ -6,7 +6,11 @@ metadata:
 spec:
   releaseName: wauhive
   targetNamespace: wauhive
-  interval: 30m
+  # 5m instead of the agrofort/tahetrukk default of 30m. wauhive ships
+  # often during dev and the operator wants a tight loop between
+  # `git push wauhost` (or a fresh image landing on ghcr) and the cluster
+  # actually running it. Cheap — six reconciles per hour vs. two.
+  interval: 5m
   chart:
     spec:
       chart: ./services/wauhive
