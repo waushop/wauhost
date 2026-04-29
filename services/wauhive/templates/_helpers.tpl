@@ -1,0 +1,58 @@
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "wauhive.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Fully qualified app name.
+*/}}
+{{- define "wauhive.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "wauhive.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "wauhive.commonLabels" -}}
+helm.sh/chart: {{ include "wauhive.chart" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Per-component (backend / frontend) labels.
+*/}}
+{{- define "wauhive.componentLabels" -}}
+{{ include "wauhive.commonLabels" . }}
+app.kubernetes.io/name: {{ include "wauhive.name" . }}
+app.kubernetes.io/component: {{ .component }}
+{{- end }}
+
+{{- define "wauhive.componentSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "wauhive.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: {{ .component }}
+{{- end }}
+
+{{- define "wauhive.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "wauhive.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,77 @@
+nameOverride: "wauhive"
+fullnameOverride: "wauhive"
+
+# Pull both backend + frontend images from ghcr; the same secret already
+# in use for agrofort/tahetrukk works here too.
+imagePullSecrets:
+  - name: ghcr-pull-secret
+
+backend:
+  image:
+    repository: ghcr.io/waushop/wauhive-backend
+    tag: latest
+    pullPolicy: Always
+  service:
+    port: 8080
+  # SQLite + WAL means SINGLE WRITER. Hard-coded to 1 replica with Recreate
+  # strategy so we never have two pods touching the same DB file.
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  env:
+    WAUHIVE_DRONES: "4"
+    WAUHIVE_HTTPS: "true"
+    WAUHIVE_MODEL: "claude-opus-4-7"
+  # Persistent volume for /data (DB + secret + config + workspace).
+  persistence:
+    size: 5Gi
+    storageClass: "" # empty = use cluster default
+
+frontend:
+  image:
+    repository: ghcr.io/waushop/wauhive-frontend
+    tag: latest
+    pullPolicy: Always
+  service:
+    port: 3000
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+  host: hive.waushop.ee
+  tlsSecretName: wauhive-tls
+  # Backend paths are matched by exact prefix; everything else falls through
+  # to the frontend. Add new prefixes here when you add new API surface.
+  apiPaths:
+    - /auth
+    - /tasks
+    - /drones
+    - /workspace
+    - /evals
+    - /runs
+    - /schedules
+    - /hive
+    - /info
+    - /health
+    - /readyz
+    - /metrics
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}

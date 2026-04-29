@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wauhive.fullname" . }}-backend
+  labels:
+    {{- include "wauhive.componentLabels" (merge (dict "component" "backend") .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  # Recreate, not RollingUpdate: SQLite + WAL doesn't tolerate two writers,
+  # so the new pod must wait for the old one to release the volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "wauhive.componentSelectorLabels" (merge (dict "component" "backend") .) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ now | date "20060102150405" | quote }}
+      labels:
+        {{- include "wauhive.componentSelectorLabels" (merge (dict "component" "backend") .) | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "wauhive.serviceAccountName" . }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.backend.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "wauhive.fullname" . }}-secrets
+          # /health is a cheap process-alive ping; /readyz also pings the DB
+          # so we don't take traffic before AutoMigrate finishes.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "wauhive.fullname" . }}-data

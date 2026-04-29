@@ -1,0 +1,45 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "wauhive.fullname" . -}}
+{{- $beSvc := printf "%s-backend" $fullName -}}
+{{- $feSvc := printf "%s-frontend" $fullName -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "wauhive.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "wauhive.name" . }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # API surface routes to the backend. Listed first so Traefik
+          # matches them before the catch-all '/'.
+          {{- range .Values.ingress.apiPaths }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $beSvc }}
+                port:
+                  number: {{ $.Values.backend.service.port }}
+          {{- end }}
+          # Everything else (the Next.js app + static assets) → frontend.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $feSvc }}
+                port:
+                  number: {{ .Values.frontend.service.port }}
+{{- end }}
