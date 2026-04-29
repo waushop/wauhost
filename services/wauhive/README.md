@@ -3,6 +3,11 @@
 Personal AI agent platform — Go backend, Next.js frontend, SQLite, Caddy → Traefik.
 Deployed at `hive.waushop.ee` (or whatever you set `ingress.host` to in values).
 
+The SQLite DB lives on a PVC inside the backend pod and is **continuously
+replicated to Hetzner Object Storage** by a Litestream sidecar. If the PVC
+comes up empty (new node, lost volume), the init container restores from
+the bucket before the backend starts.
+
 ## One-time setup
 
 ### 1. Build + push images
@@ -12,12 +17,59 @@ Deployed at `hive.waushop.ee` (or whatever you set `ingress.host` to in values).
 - `ghcr.io/waushop/wauhive-backend:latest`
 - `ghcr.io/waushop/wauhive-frontend:latest`
 
-The frontend image must be built with `--build-arg NEXT_PUBLIC_API_BASE=`
-(empty) so the FE talks same-origin via the ingress.
+Frontend gets `NEXT_PUBLIC_API_BASE=""` so it talks same-origin via the
+ingress.
 
-### 2. ghcr-pull-secret in the wauhive namespace
+### 2. Object-storage bucket
 
-Same trick as agrofort — copy the docker-config from any existing service:
+Create a bucket on Hetzner Object Storage (or Cloudflare R2 — adjust
+`endpoint` in values.yaml). Grab the access key + secret. Bucket name goes
+in `litestream.bucket`; default is `wauhive-litestream`.
+
+### 3. Generate the master encryption key — locally — and seal it
+
+Wauhive encrypts API keys at rest with a 32-byte master key
+(`wauhive.secret`). Normally auto-generated, but in K8s we pin it via a
+sealed secret so an empty-PVC restore doesn't mint a new key and brick the
+encrypted-API-key columns.
+
+```bash
+head -c 32 /dev/urandom > /tmp/master.secret
+
+kubectl create secret generic wauhive-master-secret \
+  --namespace wauhive \
+  --from-file=master.secret=/tmp/master.secret \
+  --dry-run=client -o yaml \
+  | kubeseal --controller-name sealed-secrets --controller-namespace sealed-secrets \
+      --format yaml \
+  > ../../secrets/wauhive.yaml
+
+rm /tmp/master.secret
+```
+
+If you ever lose `secrets/wauhive.yaml` AND the live cluster's secret,
+every encrypted API key in the DB is unrecoverable. Treat it like an SSH
+key.
+
+### 4. App secrets (password + Anthropic + Litestream credentials)
+
+The backend reads these via `envFrom`. Litestream uses the AWS-style env
+names so the S3-compatible Hetzner endpoint just works.
+
+```bash
+kubectl create secret generic wauhive-secrets \
+  --namespace wauhive \
+  --from-literal=WAUHIVE_PASSWORD='your-strong-password' \
+  --from-literal=ANTHROPIC_API_KEY='sk-ant-...' \
+  --from-literal=LITESTREAM_ACCESS_KEY_ID='HETZNER_ACCESS_KEY' \
+  --from-literal=LITESTREAM_SECRET_ACCESS_KEY='HETZNER_SECRET_KEY' \
+  --dry-run=client -o yaml \
+  | kubeseal --controller-name sealed-secrets --controller-namespace sealed-secrets \
+      --format yaml \
+  >> ../../secrets/wauhive.yaml
+```
+
+### 5. ghcr-pull-secret (only if your packages are private)
 
 ```bash
 kubectl -n agrofort get secret ghcr-pull-secret -o yaml \
@@ -25,56 +77,69 @@ kubectl -n agrofort get secret ghcr-pull-secret -o yaml \
   | kubectl create -f - --dry-run=client -o yaml \
   | kubeseal --controller-name sealed-secrets --controller-namespace sealed-secrets \
       --format yaml \
-  >> ../../secrets/wauhive.yaml   # appended; see step 3 for the rest
-```
-
-### 3. App secrets (password + Anthropic key)
-
-Wauhive's secret bundle is mounted as `wauhive-secrets` (the chart's
-`{{ fullname }}-secrets`) and surfaced to the backend via `envFrom`.
-
-```bash
-# Adjust values on the right of the = signs.
-kubectl create secret generic wauhive-secrets \
-  --namespace wauhive \
-  --from-literal=WAUHIVE_PASSWORD="hunter2-strong-pwd" \
-  --from-literal=ANTHROPIC_API_KEY="sk-ant-..." \
-  --dry-run=client -o yaml \
-  | kubeseal --controller-name sealed-secrets --controller-namespace sealed-secrets \
-      --format yaml \
   >> ../../secrets/wauhive.yaml
 ```
 
-Both secrets share `secrets/wauhive.yaml` — append the second SealedSecret
-after the first (separator `---`). Commit when both blocks are present.
+### 6. DNS
 
-### 4. DNS
+A record for `hive.waushop.ee` → cluster external IP. cert-manager + Traefik
+handle TLS automatically once the ingress reconciles.
 
-Point `hive.waushop.ee` (A record) at the cluster's external IP. Cert-manager
-+ Traefik handle TLS automatically once the ingress reconciles.
+## How replication actually works
 
-## What the chart does
+```
+┌─────────────────── backend pod ────────────────────┐
+│                                                    │
+│  init: litestream restore                          │
+│   └─► /data/wauhive.db ◀── from Hetzner bucket    │
+│       (only if PVC is empty AND a replica exists)  │
+│                                                    │
+│  main: backend (sqlite)                            │
+│   └─► /data/wauhive.db   (read+write)             │
+│                                                    │
+│  sidecar: litestream replicate                     │
+│   └─► watches /data/wauhive.db                     │
+│       ──► Hetzner bucket every 10s                 │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
 
-- **One backend pod, one frontend pod.** SQLite + WAL doesn't tolerate two
-  writers, so the backend is hard-coded to `replicas: 1` with `Recreate`
-  strategy. `nodeSelector`/`affinity` aren't set — the PVC is RWO and pins
-  it to one node.
-- **5Gi PVC** at `/data` on the backend pod holds the SQLite DB, the
-  encryption secret, the persisted config, and the per-drone workspaces.
-  Use `scripts/backup.sh` (in the app repo) for snapshots.
-- **Ingress splits paths**: API surface (`/auth`, `/tasks`, `/drones`,
-  `/workspace`, `/evals`, `/runs`, `/schedules`, `/hive/stream`, `/info`,
+The PVC is the canonical store. Litestream is a continuous off-site replica.
+SQLite never sees the bucket — only the PVC.
+
+Failure cases handled:
+
+- Pod restart on the same node → PVC keeps the file, no restore.
+- Pod scheduled to a new node, PVC follows → no restore.
+- PVC lost or volume corrupted → init container restores from the bucket.
+- Whole cluster gone → run `litestream restore` against the bucket from
+  anywhere with the access key.
+
+What is **not** replicated:
+
+- `wauhive.config.json` (default model, telegram bot config, allow-chats)
+  — small, recreate via Settings UI after a disaster.
+- The per-drone workspace at `/data/workspace/<droneId>/` — drones can
+  rebuild their state. Use `scripts/backup.sh` on a CronJob if you actively
+  need workspace durability.
+
+## Chart layout
+
+- **Single backend pod, Recreate strategy, RWO PVC.** SQLite + WAL doesn't
+  tolerate two writers.
+- **5Gi PVC at `/data`** for the live SQLite file + workspace.
+- **Litestream sidecar + init container** drive replication and restore.
+- **K8s-mounted master secret at `/run/secrets/wauhive/master.secret`**
+  — pinned via env `WAUHIVE_SECRET_PATH` so it doesn't drift across
+  pod incarnations.
+- **Path-routed ingress.** API prefixes (`/auth`, `/tasks`, `/drones`,
+  `/workspace`, `/evals`, `/runs`, `/schedules`, `/hive`, `/info`,
   `/health`, `/readyz`, `/metrics`) → backend. Everything else → frontend.
-  Add new prefixes to `ingress.apiPaths` in values when you add new API
-  surface.
-- **Probes**: liveness `/health` (cheap process-alive), readiness `/readyz`
-  (DB ping). New pod waits for AutoMigrate + the startup sweep before
-  taking traffic.
-- **Cookie Secure**: `WAUHIVE_HTTPS=true` is set in env so the session
-  cookie carries the Secure flag (Traefik terminates TLS upstream).
+- **Probes.** Liveness `/health`, readiness `/readyz` (DB ping). New pod
+  waits for restore + AutoMigrate + the startup sweep before taking traffic.
 
 ## Updating
 
-Push a new image to ghcr; with `imagePullPolicy: Always` and the
-deployment's `rollme` annotation, Flux reconciliation will pick it up.
-For a forced rollout: bump the image tag in `values.yaml` and commit.
+Push a new image to ghcr; `imagePullPolicy: Always` + the `rollme`
+annotation make Flux reconciliation pick it up. For a forced rollout: bump
+`image.tag` in values and commit.

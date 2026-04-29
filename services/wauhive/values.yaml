@@ -32,6 +32,34 @@ backend:
     size: 5Gi
     storageClass: "" # empty = use cluster default
 
+# Continuous SQLite-to-object-storage replication via Litestream. The PVC
+# stays the canonical live DB; the bucket holds an always-current copy we
+# restore from when a pod lands on an empty volume.
+#
+# Defaults to Hetzner Object Storage (matches agrofort/tahetrukk). Swap
+# `endpoint` for Cloudflare R2 if you change your mind. Credentials come
+# from the wauhive-secrets sealed secret: LITESTREAM_ACCESS_KEY_ID and
+# LITESTREAM_SECRET_ACCESS_KEY.
+litestream:
+  enabled: true
+  image:
+    repository: litestream/litestream
+    tag: "0.3.13"
+    pullPolicy: IfNotPresent
+  bucket: "wauhive-litestream"
+  endpoint: "hel1.your-objectstorage.com"
+  region: "eu-central"
+  # How often Litestream cuts and ships a new WAL segment. 10s = RPO of
+  # roughly 10s in the bad case. Bump to 60s if you want fewer PUTs.
+  syncInterval: "10s"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
 frontend:
   image:
     repository: ghcr.io/waushop/wauhive-frontend

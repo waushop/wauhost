@@ -1,0 +1,27 @@
+{{- if .Values.litestream.enabled }}
+# Litestream's config is shared between the init container (`litestream
+# restore`) and the sidecar (`litestream replicate`). Mounted as a file at
+# /etc/litestream.yml in both.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wauhive.fullname" . }}-litestream
+  labels:
+    {{- include "wauhive.commonLabels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "wauhive.name" . }}
+data:
+  litestream.yml: |
+    # All three Wauhive state files get replicated. The DB is the important
+    # one; the encryption secret + persisted config are tiny but recovering
+    # without them means lost API keys + lost passwords. Same bucket, three
+    # paths under it.
+    dbs:
+      - path: /data/wauhive.db
+        replicas:
+          - type: s3
+            bucket: {{ .Values.litestream.bucket | quote }}
+            path: wauhive.db
+            endpoint: {{ .Values.litestream.endpoint | quote }}
+            region: {{ .Values.litestream.region | quote }}
+            sync-interval: {{ .Values.litestream.syncInterval }}
+{{- end }}

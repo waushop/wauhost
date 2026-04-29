@@ -25,6 +25,34 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "wauhive.serviceAccountName" . }}
+      {{- if .Values.litestream.enabled }}
+      # Init container: pulls the latest snapshot+WAL from object storage if
+      # the PVC came up empty (fresh node, lost volume). The
+      # `-if-db-not-exists` and `-if-replica-exists` flags make this a no-op
+      # on a healthy PVC and on the very-first deploy with no replica yet.
+      initContainers:
+        - name: litestream-restore
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          args:
+            - restore
+            - -if-db-not-exists
+            - -if-replica-exists
+            - -config
+            - /etc/litestream.yml
+            - /data/wauhive.db
+          envFrom:
+            - secretRef:
+                name: {{ include "wauhive.fullname" . }}-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+          resources:
+            {{- toYaml .Values.litestream.resources | nindent 12 }}
+      {{- end }}
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
@@ -38,11 +66,16 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            # Pin the master encryption key to a known location: the K8s
+            # secret is the source of truth, not a randomly-generated PVC
+            # file. Otherwise an empty-PVC restore would mint a new key and
+            # the Litestream-restored DB's encrypted Anthropic key becomes
+            # unreadable garbage.
+            - name: WAUHIVE_SECRET_PATH
+              value: /run/secrets/wauhive/master.secret
           envFrom:
             - secretRef:
                 name: {{ include "wauhive.fullname" . }}-secrets
-          # /health is a cheap process-alive ping; /readyz also pings the DB
-          # so we don't take traffic before AutoMigrate finishes.
           livenessProbe:
             httpGet:
               path: /health
@@ -58,9 +91,47 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: master-secret
+              mountPath: /run/secrets/wauhive
+              readOnly: true
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
+        {{- if .Values.litestream.enabled }}
+        # Sidecar: ships WAL frames to object storage every
+        # {{ .Values.litestream.syncInterval }}. Same volume + same config as
+        # the init container so they agree on paths and credentials.
+        - name: litestream
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          args:
+            - replicate
+            - -config
+            - /etc/litestream.yml
+          envFrom:
+            - secretRef:
+                name: {{ include "wauhive.fullname" . }}-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+          resources:
+            {{- toYaml .Values.litestream.resources | nindent 12 }}
+        {{- end }}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "wauhive.fullname" . }}-data
+        - name: master-secret
+          secret:
+            secretName: {{ include "wauhive.fullname" . }}-master-secret
+            items:
+              - key: master.secret
+                path: master.secret
+            defaultMode: 0400
+        {{- if .Values.litestream.enabled }}
+        - name: litestream-config
+          configMap:
+            name: {{ include "wauhive.fullname" . }}-litestream
+        {{- end }}
