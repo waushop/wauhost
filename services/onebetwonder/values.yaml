@@ -9,7 +9,7 @@ deploymentStrategy:
     maxUnavailable: 0
 
 image:
-  repository: ghcr.io/wauchy/onebetwonder
+  repository: ghcr.io/waushop/onebetwonder
   tag: latest
   pullPolicy: Always
 

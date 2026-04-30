@@ -46,7 +46,7 @@ litestream:
     repository: litestream/litestream
     tag: "0.3.13"
     pullPolicy: IfNotPresent
-  bucket: "wauhive-litestream"
+  bucket: "wauhive"
   endpoint: "hel1.your-objectstorage.com"
   region: "eu-central"
   # How often Litestream cuts and ships a new WAL segment. 10s = RPO of
