@@ -1,39 +1,31 @@
 replicaCount: 1
-
 deploymentAnnotations: {}
-
 deploymentStrategy:
   type: RollingUpdate
   rollingUpdate:
     maxSurge: 1
     maxUnavailable: 0
-
 image:
   repository: ghcr.io/waushop/agrofort
   # `tag` is auto-bumped to the short git SHA by the app's deploy.yml after
   # each successful image build. Don't hand-edit unless pinning for rollback.
-  tag: latest
+  tag: 3f935a0
   pullPolicy: IfNotPresent
-
 imagePullSecrets:
   - name: ghcr-pull-secret
 nameOverride: "web"
 fullnameOverride: "web"
-
 serviceAccount:
   create: true
   annotations: {}
   name: ""
-
 podAnnotations: {}
 podSecurityContext: {}
 securityContext: {}
-
 service:
   type: ClusterIP
   port: 80
   targetPort: 3000
-
 ingress:
   enabled: true
   className: "traefik"
@@ -48,7 +40,6 @@ ingress:
     - secretName: agrofort-tls
       hosts:
         - agrofort.ee
-
 resources:
   limits:
     cpu: 500m
@@ -56,17 +47,14 @@ resources:
   requests:
     cpu: 200m
     memory: 256Mi
-
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 80
-
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
 env:
   NODE_ENV: production
   NEXT_PUBLIC_STORAGE_ENDPOINT: hel1.your-objectstorage.com
@@ -82,6 +70,5 @@ env:
   DB_USER: root
   DB_NAME: agrofort
   ENABLE_ADMIN: "true"
-
 redirect:
   enabled: false
