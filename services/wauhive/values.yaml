@@ -101,6 +101,8 @@ ingress:
     - /logs
     - /audit
     - /csp-report
+    - /backup
+    - /status
 serviceAccount:
   create: true
   name: ""
