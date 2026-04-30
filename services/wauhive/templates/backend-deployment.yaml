@@ -15,8 +15,6 @@ spec:
       {{- include "wauhive.componentSelectorLabels" (merge (dict "component" "backend") .) | nindent 6 }}
   template:
     metadata:
-      annotations:
-        rollme: {{ now | date "20060102150405" | quote }}
       labels:
         {{- include "wauhive.componentSelectorLabels" (merge (dict "component" "backend") .) | nindent 8 }}
     spec:

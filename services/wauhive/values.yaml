@@ -9,8 +9,11 @@ imagePullSecrets:
 backend:
   image:
     repository: ghcr.io/waushop/wauhive-backend
+    # `tag` is auto-bumped to the short git SHA by wauhive's release workflow
+    # on every push to main. Don't hand-edit unless you're pinning to a
+    # specific build for rollback.
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   service:
     port: 8080
   # SQLite + WAL means SINGLE WRITER. Hard-coded to 1 replica with Recreate
@@ -63,8 +66,9 @@ litestream:
 frontend:
   image:
     repository: ghcr.io/waushop/wauhive-frontend
+    # Same auto-bump as backend.image.tag.
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   service:
     port: 3000
   replicaCount: 1
