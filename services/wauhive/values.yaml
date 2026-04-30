@@ -63,7 +63,7 @@ frontend:
   image:
     repository: ghcr.io/waushop/wauhive-frontend
     # Same auto-bump as backend.image.tag.
-    tag: cd08969
+    tag: 60c9093
     pullPolicy: IfNotPresent
   service:
     port: 3000
