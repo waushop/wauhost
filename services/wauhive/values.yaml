@@ -10,7 +10,7 @@ backend:
     # `tag` is auto-bumped to the short git SHA by wauhive's release workflow
     # on every push to main. Don't hand-edit unless you're pinning to a
     # specific build for rollback.
-    tag: "8899e11"
+    tag: "dba6e4d"
     pullPolicy: IfNotPresent
   service:
     port: 8080
@@ -63,7 +63,7 @@ frontend:
   image:
     repository: ghcr.io/waushop/wauhive-frontend
     # Same auto-bump as backend.image.tag.
-    tag: "8899e11"
+    tag: "dba6e4d"
     pullPolicy: IfNotPresent
   service:
     port: 3000
