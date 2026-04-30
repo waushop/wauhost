@@ -1,18 +1,16 @@
 nameOverride: "wauhive"
 fullnameOverride: "wauhive"
-
 # Pull both backend + frontend images from ghcr; the same secret already
 # in use for agrofort/tahetrukk works here too.
 imagePullSecrets:
   - name: ghcr-pull-secret
-
 backend:
   image:
     repository: ghcr.io/waushop/wauhive-backend
     # `tag` is auto-bumped to the short git SHA by wauhive's release workflow
     # on every push to main. Don't hand-edit unless you're pinning to a
     # specific build for rollback.
-    tag: latest
+    tag: 706c56a
     pullPolicy: IfNotPresent
   service:
     port: 8080
@@ -34,7 +32,6 @@ backend:
   persistence:
     size: 5Gi
     storageClass: "" # empty = use cluster default
-
 # Continuous SQLite-to-object-storage replication via Litestream. The PVC
 # stays the canonical live DB; the bucket holds an always-current copy we
 # restore from when a pod lands on an empty volume.
@@ -62,12 +59,11 @@ litestream:
     requests:
       cpu: 10m
       memory: 32Mi
-
 frontend:
   image:
     repository: ghcr.io/waushop/wauhive-frontend
     # Same auto-bump as backend.image.tag.
-    tag: latest
+    tag: 706c56a
     pullPolicy: IfNotPresent
   service:
     port: 3000
@@ -79,7 +75,6 @@ frontend:
     requests:
       cpu: 100m
       memory: 128Mi
-
 ingress:
   enabled: true
   className: "traefik"
@@ -102,7 +97,6 @@ ingress:
     - /health
     - /readyz
     - /metrics
-
 serviceAccount:
   create: true
   name: ""
