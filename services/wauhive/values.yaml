@@ -99,6 +99,8 @@ ingress:
     - /metrics
     - /settings
     - /logs
+    - /audit
+    - /csp-report
 serviceAccount:
   create: true
   name: ""
