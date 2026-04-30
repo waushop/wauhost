@@ -10,8 +10,10 @@ deploymentStrategy:
 
 image:
   repository: ghcr.io/waushop/waushop
+  # `tag` is auto-bumped to the short git SHA by the app's deploy.yml after
+  # each successful image build. Don't hand-edit unless pinning for rollback.
   tag: latest
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 imagePullSecrets:
   - name: ghcr-pull-secret
