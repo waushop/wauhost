@@ -129,7 +129,10 @@ spec:
             items:
               - key: master.secret
                 path: master.secret
-            defaultMode: 0400
+            # 0444 (not 0400): backend image runs as USER nonroot, but the
+            # secret tmpfs is owned by root. Anything stricter than world-
+            # readable means the container can't read its own master key.
+            defaultMode: 0444
         {{- if .Values.litestream.enabled }}
         - name: litestream-config
           configMap:
