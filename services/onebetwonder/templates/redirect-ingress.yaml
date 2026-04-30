@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-www-redirect
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-www-obw@kubernetescrd
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - www.obw.waushop.ee
+      secretName: obw-waushop-www-tls
+  rules:
+    - host: www.obw.waushop.ee
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "onebetwonder.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-www-obw
+  namespace: default
+spec:
+  redirectRegex:
+    regex: ^https://www\.onebetwonder\.com/(.*)
+    replacement: https://obw.waushop.ee/${1}
+    permanent: true

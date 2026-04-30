@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "kraman.fullname" . }}-www-redirect
+  labels:
+    {{- include "kraman.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-www-kraman@kubernetescrd
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - www.kraman.ee
+      secretName: kraman-www-tls
+  rules:
+    - host: www.kraman.ee
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "kraman.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-www-kraman
+  namespace: default
+spec:
+  redirectRegex:
+    regex: ^https://www\.kraman\.ee/(.*)
+    replacement: https://kraman.ee/${1}
+    permanent: true

@@ -1,0 +1,91 @@
+name: Validate
+
+# wauhost is a GitOps repo — Flux pulls from main and reconciles the cluster.
+# This workflow's only job is to catch malformed YAML before Flux sees it,
+# so a typo doesn't leave the cluster in a degraded reconcile state until
+# someone notices.
+#
+# Two checks:
+#   1. helm lint + template — every Chart.yaml renders cleanly with its values
+#   2. kustomize build      — every clusters/* Kustomization assembles
+#
+# yamllint is intentionally NOT run in CI: there's enough pre-existing
+# style drift across third-party-sourced manifests (network/unifi/*, some
+# values.yaml files) that it'd be noise. Run it locally if you want with
+# `yamllint -c .yamllint .` — the config is checked in.
+#
+# kubeconform is also out: rendered SealedSecrets carry custom CRD types
+# that need extra --schema-location wiring, and the helm/kustomize passes
+# already catch the realistic break (broken templates, missing values,
+# undefined helpers, kustomize merge errors).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  helm:
+    name: helm lint + template
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.15.0
+
+      - name: Lint and render every chart
+        run: |
+          set -e
+          fail=0
+          for chart_yaml in $(find . -name 'Chart.yaml' -not -path './.git/*'); do
+            chart_dir="$(dirname "$chart_yaml")"
+            echo "::group::$chart_dir"
+            helm lint "$chart_dir" || fail=1
+            # template against the chart's own values.yaml. Catches missing
+            # required values, indentation issues, undefined helpers.
+            helm template "$chart_dir" --debug > /dev/null || fail=1
+            echo "::endgroup::"
+          done
+          [ "$fail" -eq 0 ] || { echo "✗ one or more charts failed"; exit 1; }
+
+  kustomize:
+    name: kustomize build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup-kustomize action is a thin wrapper; do it manually for fewer deps.
+      - name: Install kustomize
+        run: |
+          curl -sLo kustomize.tgz \
+            https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+          tar -xzf kustomize.tgz
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Build every Kustomization
+        run: |
+          set -e
+          fail=0
+          # Skip flux-system/gotk-* — those are vendor-shipped manifests we
+          # don't author, just track.
+          for k in $(find clusters network -name kustomization.yaml \
+                       | grep -v 'flux-system'); do
+            d="$(dirname "$k")"
+            echo "::group::$d"
+            kustomize build --load-restrictor LoadRestrictionsNone "$d" \
+              > /dev/null || fail=1
+            echo "::endgroup::"
+          done
+          [ "$fail" -eq 0 ] || { echo "✗ one or more kustomizations failed"; exit 1; }

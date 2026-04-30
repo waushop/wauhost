@@ -1,0 +1,6 @@
+apiVersion: v2
+name: onebetwonder
+description: A Helm chart for One Bet Wonder — FIFA World Cup 2026 Prediction Game
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

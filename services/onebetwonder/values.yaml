@@ -1,0 +1,76 @@
+replicaCount: 1
+
+deploymentAnnotations: {}
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+image:
+  repository: ghcr.io/wauchy/onebetwonder
+  tag: latest
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: ghcr-pull-secret
+nameOverride: "web"
+fullnameOverride: "web"
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+  hosts:
+    - host: obw.waushop.ee
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: obw-waushop-tls
+      hosts:
+        - obw.waushop.ee
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+env:
+  NODE_ENV: production
+  DB_HOST: "mysql.mysql.svc.cluster.local"
+  DB_PORT: "3306"
+  DB_USER: "onebetwonder"
+  DB_NAME: "onebetwonder"
+
+# Secrets (DB_PASSWORD, JWT_SECRET, WC2026_API_KEY, SYNC_SECRET, INVITE_CODE)
+# managed via SealedSecret in wauhost/secrets/onebetwonder.yaml
