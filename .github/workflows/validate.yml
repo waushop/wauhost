@@ -48,9 +48,29 @@ jobs:
         run: |
           set -e
           fail=0
+
+          # Pre-register every distinct `repository:` URL referenced from
+          # any Chart.yaml so `helm dependency build` can resolve it.
+          # Repos are looked up by name, so we generate stable names from
+          # the URL host.
+          for chart_yaml in $(find . -name 'Chart.yaml' -not -path './.git/*'); do
+            awk '/^[[:space:]]*repository:/ { gsub(/"/,""); print $2 }' "$chart_yaml"
+          done | sort -u | while read -r repo_url; do
+            [ -z "$repo_url" ] && continue
+            repo_name="$(echo "$repo_url" | sed -E 's|https?://||; s|[/.]|-|g')"
+            helm repo add "$repo_name" "$repo_url" 2>/dev/null || true
+          done
+          helm repo update >/dev/null 2>&1 || true
+
           for chart_yaml in $(find . -name 'Chart.yaml' -not -path './.git/*'); do
             chart_dir="$(dirname "$chart_yaml")"
             echo "::group::$chart_dir"
+            # No-op for charts without dependencies; pulls vendor charts
+            # (sealed-secrets, etc.) into charts/ for the ones that do.
+            if grep -q '^dependencies:' "$chart_yaml"; then
+              rm -rf "$chart_dir/charts"
+              helm dependency build "$chart_dir" || fail=1
+            fi
             helm lint "$chart_dir" || fail=1
             # template against the chart's own values.yaml. Catches missing
             # required values, indentation issues, undefined helpers.
