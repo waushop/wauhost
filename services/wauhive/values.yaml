@@ -97,6 +97,8 @@ ingress:
     - /health
     - /readyz
     - /metrics
+    - /settings
+    - /logs
 serviceAccount:
   create: true
   name: ""
