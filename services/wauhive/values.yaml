@@ -103,6 +103,7 @@ ingress:
     - /csp-report
     - /backup
     - /status
+    - /api-spec
 serviceAccount:
   create: true
   name: ""
