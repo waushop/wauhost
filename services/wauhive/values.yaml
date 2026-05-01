@@ -83,27 +83,22 @@ ingress:
   host: hive.waushop.ee
   tlsSecretName: wauhive-tls
   # Backend paths are matched by exact prefix; everything else falls through
-  # to the frontend. Add new prefixes here when you add new API surface.
+  # to the frontend.
+  #
+  # All app-level routes live under /api/* now (see wauhive's
+  # internal/api/server.go routes()). The remaining root-level entries are
+  # operational probes (/health, /readyz, /metrics — k8s + Prometheus),
+  # the public uptime page (/status), and the browser-emitted CSP report
+  # POST (/csp-report). Frontend page paths (/settings, /tasks, /drones …)
+  # share names with backend resources but no longer collide because they
+  # serve UI from the Next.js pod.
   apiPaths:
-    - /auth
-    - /tasks
-    - /drones
-    - /workspace
-    - /evals
-    - /runs
-    - /schedules
-    - /hive
-    - /info
+    - /api
     - /health
     - /readyz
     - /metrics
-    - /settings
-    - /logs
-    - /audit
-    - /csp-report
-    - /backup
     - /status
-    - /api-spec
+    - /csp-report
 serviceAccount:
   create: true
   name: ""
