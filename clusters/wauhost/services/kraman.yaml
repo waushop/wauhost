@@ -6,6 +6,7 @@ metadata:
 spec:
   releaseName: web
   targetNamespace: kraman
+  storageNamespace: kraman
   interval: 30m
   chart:
     spec:

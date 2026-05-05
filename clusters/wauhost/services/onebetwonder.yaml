@@ -6,6 +6,7 @@ metadata:
 spec:
   releaseName: web
   targetNamespace: onebetwonder
+  storageNamespace: onebetwonder
   interval: 30m
   chart:
     spec:

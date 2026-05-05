@@ -6,6 +6,7 @@ metadata:
 spec:
   releaseName: web
   targetNamespace: tahetrukk
+  storageNamespace: tahetrukk
   interval: 30m
   chart:
     spec:

@@ -6,6 +6,7 @@ metadata:
 spec:
   releaseName: web
   targetNamespace: agrofort
+  storageNamespace: agrofort
   interval: 30m
   chart:
     spec:
