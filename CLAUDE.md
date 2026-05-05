@@ -14,14 +14,15 @@ clusters/wauhost/           # Flux Kustomizations + HelmReleases
 ├── infra/controllers/      # cert-manager, sealed-secrets
 ├── infra/data/             # mysql (DO NOT MODIFY without explicit permission)
 ├── secrets/                # Kustomization pointing to ../../secrets/
-├── services/               # Ghost blog instances
+├── services/               # All HelmReleases (Ghost, NextJS apps, wauhive)
 
 infra/                      # Local Helm charts
 ├── cert-manager/           # ClusterIssuer config (controller from jetstack HelmRepo)
 ├── mysql/                  # MySQL deployment
 └── sealed-secrets/         # Wrapper (controller from bitnami HelmRepo)
 
-services/ghost/             # Reusable Ghost blog Helm chart
+services/                   # Local Helm charts: ghost, wauhive, and one per NextJS app
+                            # (agrofort, kraman, onebetwonder, tahetrukk, waushop)
 secrets/                    # Bitnami SealedSecrets (encrypted in git)
 network/unifi/              # UniFi controller (flat manifests, not Helm)
 ```
@@ -55,14 +56,17 @@ infra-controllers (cert-manager, sealed-secrets)
 
 ## Services
 
+All NextJS app HRs use `releaseName: web` and **must** set `storageNamespace: <targetNamespace>` to avoid colliding on a shared `flux-system/sh.helm.release.v1.web.v1` storage entry. Without it, every reconcile triggers a fresh install and replaces the pod every 30 min.
+
 | Service | Namespace | Domain | Chart | Status |
 |---------|-----------|--------|-------|--------|
-| vausiim | vausiim | vausiim.ee | services/ghost (Flux-managed, S3 storage) | Flux |
-| agrofort | agrofort | agrofort.ee | NextJS app (manual deploy) | Manual |
-| kraman | kraman | kraman.ee | NextJS app (manual deploy) | Manual |
-| onebetwonder | onebetwonder | waushop.ee | NextJS app (manual deploy) | Manual |
-| tahetrukk | tahetrukk | — | NextJS app (ghcr.io/waushop/tahetrukk) | Manual |
-| waushop | waushop | — | NextJS app (ghcr.io/waushop/waushop) | Manual |
+| vausiim | vausiim | vausiim.ee | services/ghost (S3 storage) | Flux |
+| wauhive | wauhive | hive.waushop.ee | services/wauhive | Flux |
+| agrofort | agrofort | agrofort.ee | services/agrofort (NextJS) | Flux |
+| kraman | kraman | kraman.ee | services/kraman (NextJS) | Flux |
+| onebetwonder | onebetwonder | obw.waushop.ee | services/onebetwonder (NextJS) | Flux |
+| tahetrukk | tahetrukk | tahetrukk.ee | services/tahetrukk (NextJS) | Flux |
+| waushop | waushop | waushop.ee | services/waushop (NextJS) | Flux |
 | unifi | unifi | unifi.waushop.ee | flat manifests (jacobalberty/unifi:v9.5.21) | Flux |
 
 ## Validation
