@@ -1,0 +1,21 @@
+{{- if .Values.litestream.enabled }}
+# Litestream config shared by the init container (`litestream restore`) and the
+# sidecar (`litestream replicate`). Mounted as a file at /etc/litestream.yml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "raha.fullname" . }}-litestream
+  labels:
+    {{- include "raha.labels" . | nindent 4 }}
+data:
+  litestream.yml: |
+    dbs:
+      - path: {{ .Values.env.DB_PATH | default "/data/raha.sqlite" | quote }}
+        replicas:
+          - type: s3
+            bucket: {{ .Values.litestream.bucket | quote }}
+            path: raha.sqlite
+            endpoint: {{ .Values.litestream.endpoint | quote }}
+            region: {{ .Values.litestream.region | quote }}
+            sync-interval: {{ .Values.litestream.syncInterval }}
+{{- end }}

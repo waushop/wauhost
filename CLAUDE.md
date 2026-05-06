@@ -67,6 +67,7 @@ All NextJS app HRs use `releaseName: web` and **must** set `storageNamespace: <t
 | onebetwonder | onebetwonder | obw.waushop.ee | services/onebetwonder (NextJS) | Flux |
 | tahetrukk | tahetrukk | tahetrukk.ee | services/tahetrukk (NextJS) | Flux |
 | waushop | waushop | waushop.ee | services/waushop (NextJS) | Flux |
+| raha | raha | raha.waushop.ee | services/raha (NextJS) | Flux |
 | unifi | unifi | unifi.waushop.ee | flat manifests (jacobalberty/unifi:v9.5.21) | Flux |
 
 ## Validation

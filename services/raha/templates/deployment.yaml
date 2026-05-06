@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "raha.fullname" . }}
+  labels:
+    {{- include "raha.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- if .Values.deploymentStrategy }}
+  strategy:
+    {{- toYaml .Values.deploymentStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "raha.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "raha.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "raha.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.litestream.enabled }}
+      # Init container: restore the SQLite file from object storage if the PVC
+      # came up empty (fresh node, lost volume). The flags make this a no-op
+      # on a healthy PVC and on the very-first deploy with no replica yet.
+      initContainers:
+        - name: litestream-restore
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          args:
+            - restore
+            - -if-db-not-exists
+            - -if-replica-exists
+            - -config
+            - /etc/litestream.yml
+            - {{ .Values.env.DB_PATH | default "/data/raha.sqlite" }}
+          envFrom:
+            - secretRef:
+                name: {{ include "raha.fullname" . }}-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+          resources:
+            {{- toYaml .Values.litestream.resources | nindent 12 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          envFrom:
+            # Optional: PIN is set via the in-app /login first-time-setup flow,
+            # so the secret only needs to exist if you want to bootstrap a PIN
+            # via AUTH_PIN_HASH or enable Litestream (LITESTREAM_*).
+            - secretRef:
+                name: {{ include "raha.fullname" . }}-secrets
+                optional: true
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.litestream.enabled }}
+        # Sidecar: ships WAL frames to object storage every
+        # {{ .Values.litestream.syncInterval }}. Same volume + same config as
+        # the init container so they agree on paths and credentials.
+        - name: litestream
+          image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
+          imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
+          args:
+            - replicate
+            - -config
+            - /etc/litestream.yml
+          envFrom:
+            - secretRef:
+                name: {{ include "raha.fullname" . }}-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+          resources:
+            {{- toYaml .Values.litestream.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "raha.fullname" . }}-data
+        {{- if .Values.litestream.enabled }}
+        - name: litestream-config
+          configMap:
+            name: {{ include "raha.fullname" . }}-litestream
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
