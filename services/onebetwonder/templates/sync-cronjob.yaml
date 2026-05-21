@@ -1,0 +1,38 @@
+{{- if .Values.syncCron.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-sync
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.syncCron.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: sync
+              image: curlimages/curl:8.10.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  code=$(curl -sS -o /tmp/body -w "%{http_code}" "http://{{ include "onebetwonder.fullname" . }}/api/sync?secret=${SYNC_SECRET}")
+                  echo "HTTP $code"
+                  cat /tmp/body
+                  echo
+                  [ "$code" = "200" ]
+              env:
+                - name: SYNC_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: web-secrets
+                      key: SYNC_SECRET
+{{- end }}
