@@ -63,3 +63,10 @@ env:
   DB_NAME: "onebetwonder"
 # Secrets (DB_PASSWORD, JWT_SECRET, WC2026_API_KEY, SYNC_SECRET, INVITE_CODE)
 # managed via SealedSecret in wauhost/secrets/onebetwonder.yaml
+
+# Sync CronJob — hits /api/sync?secret=$SYNC_SECRET every 3 min.
+# /api/sync auto-imports new fixtures + promotes knockout placeholders + scores
+# live/completed matches. This is the single durable scheduler.
+syncCron:
+  enabled: true
+  schedule: "*/3 * * * *"
