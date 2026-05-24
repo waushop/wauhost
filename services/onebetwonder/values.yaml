@@ -32,11 +32,23 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt"
   hosts:
+    - host: threeamigos.lol
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: www.threeamigos.lol
+      paths:
+        - path: /
+          pathType: Prefix
     - host: obw.waushop.ee
       paths:
         - path: /
           pathType: Prefix
   tls:
+    - secretName: threeamigos-tls
+      hosts:
+        - threeamigos.lol
+        - www.threeamigos.lol
     - secretName: obw-waushop-tls
       hosts:
         - obw.waushop.ee
