@@ -24,7 +24,7 @@ spec:
                 - -c
                 - |
                   set -eu
-                  code=$(curl -sS -o /tmp/body -w "%{http_code}" "http://{{ include "onebetwonder.fullname" . }}/api/sync?secret=${SYNC_SECRET}")
+                  code=$(curl -sS -o /tmp/body -w "%{http_code}" -H "Authorization: Bearer ${SYNC_SECRET}" "http://{{ include "onebetwonder.fullname" . }}/api/sync")
                   echo "HTTP $code"
                   cat /tmp/body
                   echo
