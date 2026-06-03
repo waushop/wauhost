@@ -1,0 +1,79 @@
+{{- if .Values.backupCron.enabled }}
+# Off-site DB backup. An init container runs mysqldump (creds from the existing
+# web-secrets) and gzips to a shared volume; the main container uploads the dump
+# to an S3-compatible bucket (Hetzner Object Storage) and prunes old copies.
+# S3 credentials come from the `obw-backup-s3` Secret, created out-of-band and
+# intentionally NOT committed to git.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-backup
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backupCron.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+            - name: dump
+              emptyDir: {}
+          initContainers:
+            - name: dump
+              image: {{ .Values.backupCron.dumpImage | quote }}
+              command: [sh, -c]
+              args:
+                - |
+                  set -eu
+                  echo "dumping $DB_NAME from $DB_HOST ..."
+                  mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" \
+                    --single-transaction --quick --no-tablespaces --column-statistics=0 \
+                    "$DB_NAME" | gzip > /dump/obw.sql.gz
+                  ls -lh /dump/obw.sql.gz
+              env:
+                - name: DB_HOST
+                  value: {{ .Values.env.DB_HOST | quote }}
+                - name: DB_PORT
+                  value: {{ .Values.env.DB_PORT | quote }}
+                - name: DB_USER
+                  value: {{ .Values.env.DB_USER | quote }}
+                - name: DB_NAME
+                  value: {{ .Values.env.DB_NAME | quote }}
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "onebetwonder.fullname" . }}-secrets
+                      key: DB_PASSWORD
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+          containers:
+            - name: upload
+              image: {{ .Values.backupCron.uploadImage | quote }}
+              command: [sh, -c]
+              args:
+                - |
+                  set -eu
+                  mc alias set hz "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY" >/dev/null
+                  KEY="backups/obw-$(date +%F-%H%M%S).sql.gz"
+                  mc cp /dump/obw.sql.gz "hz/$S3_BUCKET/$KEY"
+                  echo "uploaded $KEY"
+                  # Retention: drop dumps older than the window (best-effort).
+                  mc rm --force --recursive --older-than "{{ .Values.backupCron.retention }}" \
+                    "hz/$S3_BUCKET/backups/" || true
+              envFrom:
+                - secretRef:
+                    name: obw-backup-s3
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+              resources:
+                limits: { cpu: 200m, memory: 128Mi }
+                requests: { cpu: 50m, memory: 64Mi }
+{{- end }}

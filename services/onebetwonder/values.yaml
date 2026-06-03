@@ -82,3 +82,13 @@ env:
 syncCron:
   enabled: true
   schedule: "*/3 * * * *"
+
+# Off-site DB backup → S3-compatible bucket (Hetzner Object Storage).
+# Requires the `obw-backup-s3` Secret (S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY,
+# S3_SECRET_KEY) created out-of-band — kept OUT of git on purpose.
+backupCron:
+  enabled: true
+  schedule: "0 */6 * * *"   # every 6 hours
+  retention: "14d"          # delete dumps older than this window
+  dumpImage: "mysql:8.4"
+  uploadImage: "minio/mc:latest"
