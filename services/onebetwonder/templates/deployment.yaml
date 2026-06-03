@@ -49,6 +49,12 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "onebetwonder.fullname" . }}-secrets
+            # Telegram bot + LLM persona (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+            # ANTHROPIC_API_KEY). Created out-of-band; optional so the app still
+            # boots if it's absent (notifications just no-op).
+            - secretRef:
+                name: obw-telegram
+                optional: true
           livenessProbe:
             httpGet:
               path: /

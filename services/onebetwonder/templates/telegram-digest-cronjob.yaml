@@ -1,0 +1,40 @@
+{{- if .Values.digestCron.enabled }}
+# Posts the daily "today's fixtures + predict reminder" digest to the Telegram
+# group. No-op if Telegram isn't configured. Auth via SYNC_SECRET, like web-sync.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-digest
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.digestCron.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: digest
+              image: curlimages/curl:8.10.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  code=$(curl -sS -o /tmp/body -w "%{http_code}" -H "Authorization: Bearer ${SYNC_SECRET}" "http://{{ include "onebetwonder.fullname" . }}/api/telegram/digest")
+                  echo "HTTP $code"
+                  cat /tmp/body
+                  echo
+                  [ "$code" = "200" ]
+              env:
+                - name: SYNC_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: web-secrets
+                      key: SYNC_SECRET
+{{- end }}
