@@ -9,7 +9,7 @@ image:
   repository: ghcr.io/waushop/onebetwonder
   # `tag` is auto-bumped to the short git SHA by the app's deploy.yml after
   # each successful image build. Don't hand-edit unless pinning for rollback.
-  tag: "41a30e7"
+  tag: "566883b"
   pullPolicy: IfNotPresent
 imagePullSecrets:
   - name: ghcr-pull-secret
@@ -82,12 +82,13 @@ env:
 syncCron:
   enabled: true
   schedule: "*/3 * * * *"
+
 # Off-site DB backup → S3-compatible bucket (Hetzner Object Storage).
 # Requires the `obw-backup-s3` Secret (S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY,
 # S3_SECRET_KEY) created out-of-band — kept OUT of git on purpose.
 backupCron:
   enabled: true
-  schedule: "0 */6 * * *" # every 6 hours
-  retention: "14d" # delete dumps older than this window
+  schedule: "0 */6 * * *"   # every 6 hours
+  retention: "3650d"        # effectively keep all (dumps are ~11KB each, live in the bucket)
   dumpImage: "mysql:8.4"
   uploadImage: "minio/mc:latest"
