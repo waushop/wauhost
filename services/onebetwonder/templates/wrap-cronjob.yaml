@@ -1,0 +1,41 @@
+{{- if .Values.wrapCron.enabled }}
+# Generates "The Daily Wrap" for the latest completed match-day (no-op if already
+# wrapped or the day's still running). Runs a few times a day so it fires soon
+# after a day finishes. Auth via SYNC_SECRET, like web-sync.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-wrap
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.wrapCron.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: wrap
+              image: curlimages/curl:8.10.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  code=$(curl -sS -X POST -o /tmp/body -w "%{http_code}" -H "Authorization: Bearer ${SYNC_SECRET}" "http://{{ include "onebetwonder.fullname" . }}/api/wrap/generate")
+                  echo "HTTP $code"
+                  cat /tmp/body
+                  echo
+                  [ "$code" = "200" ]
+              env:
+                - name: SYNC_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: web-secrets
+                      key: SYNC_SECRET
+{{- end }}
