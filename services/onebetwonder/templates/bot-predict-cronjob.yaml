@@ -1,0 +1,42 @@
+{{- if .Values.botPredict.enabled }}
+# "The Commentator" bot fills in its score predictions for upcoming (not-yet-locked)
+# matches, answers the bonus questions while open, and announces imminent picks to
+# the group. Idempotent — runs every few hours, well inside the prediction cutoff.
+# Auth via SYNC_SECRET, like web-sync / web-wrap.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onebetwonder.fullname" . }}-bot-predict
+  labels:
+    {{- include "onebetwonder.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.botPredict.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: bot-predict
+              image: curlimages/curl:8.10.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  code=$(curl -sS -X POST -o /tmp/body -w "%{http_code}" -H "Authorization: Bearer ${SYNC_SECRET}" "http://{{ include "onebetwonder.fullname" . }}/api/bot/predict")
+                  echo "HTTP $code"
+                  cat /tmp/body
+                  echo
+                  [ "$code" = "200" ]
+              env:
+                - name: SYNC_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: web-secrets
+                      key: SYNC_SECRET
+{{- end }}
