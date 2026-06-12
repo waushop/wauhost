@@ -76,12 +76,15 @@ env:
 # Secrets (DB_PASSWORD, JWT_SECRET, WC2026_API_KEY, SYNC_SECRET, INVITE_CODE)
 # managed via SealedSecret in wauhost/secrets/onebetwonder.yaml
 
-# Sync CronJob — hits /api/sync?secret=$SYNC_SECRET every 3 min.
+# Sync CronJob — hits /api/sync?secret=$SYNC_SECRET every minute.
 # /api/sync auto-imports new fixtures + promotes knockout placeholders + scores
-# live/completed matches. This is the single durable scheduler.
+# live/completed matches. This is the single durable scheduler. Every-minute
+# cadence is safe on the free football-data tier: one API call per tick, and
+# ticks outside a match's ±2h window (or with nothing live) skip the API
+# entirely, so quota only burns while matches are actually on.
 syncCron:
   enabled: true
-  schedule: "*/3 * * * *"
+  schedule: "* * * * *"
 # Daily Telegram "today's fixtures + predict" digest. No-op unless the
 # obw-telegram secret is set. 06:00 UTC = 09:00 Estonia (where the players are).
 digestCron:
