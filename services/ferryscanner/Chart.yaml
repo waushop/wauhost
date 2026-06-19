@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ferryscanner
+description: A Helm chart for Ferry Scanner — Estonian ferry availability watcher (ferry.waushop.ee)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
