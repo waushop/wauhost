@@ -1,0 +1,30 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ferryscanner.fullname" . }}
+  labels:
+    {{- include "ferryscanner.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ferryscanner.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic to the app port from anywhere in-cluster — this covers both
+    # the Traefik ingress controller and kubelet liveness/readiness probes.
+    - ports:
+        - port: {{ .Values.service.targetPort }}
+          protocol: TCP
+  egress:
+    # The app fetches praamid.ee from the browser (client-side) and uses no
+    # database, so it needs no runtime outbound. Allow only DNS and deny
+    # everything else — defense-in-depth to contain any future RCE-class bug.
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}

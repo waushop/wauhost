@@ -41,8 +41,11 @@ ingress:
     - secretName: ferry-waushop-tls
       hosts:
         - ferry.waushop.ee
-# Stateless app: only the public site + its /api/ferry proxy to praamid.ee.
-# No database, no secrets, no cron — all monitoring runs client-side.
+# Stateless app: just the public site. praamid.ee is fetched client-side
+# (browser), so the pod needs no runtime outbound, no database, no secrets.
+# NetworkPolicy locks egress down to DNS-only as defense-in-depth.
+networkPolicy:
+  enabled: true
 resources:
   limits:
     cpu: 300m
