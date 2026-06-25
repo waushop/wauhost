@@ -29,6 +29,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "ferryscanner.serviceAccountName" . }}
+      # The app makes no Kubernetes API calls, so don't mount the SA token —
+      # it's only attack surface (e.g. for any future RSC/RCE-class bug).
+      automountServiceAccountToken: false
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
