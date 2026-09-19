@@ -105,4 +105,6 @@ backupCron:
   schedule: "0 */6 * * *" # every 6 hours
   retention: "3650d" # effectively keep all (dumps are ~11KB each, live in the bucket)
   dumpImage: "mysql:8.4"
-  uploadImage: "minio/mc:latest"
+  # quay.io + pinned tag: MinIO removed minio/mc from Docker Hub (backups silently
+  # stopped for 8 days in Sept 2026 with ImagePullBackOff on :latest).
+  uploadImage: "quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z"
