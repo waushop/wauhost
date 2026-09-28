@@ -1,0 +1,16 @@
+# k3s ships Traefik itself (kube-system HelmChart "traefik"); this is the
+# supported way to override its chart values. Without a memory limit the
+# proxy grew to 3.2Gi over ~6 months (2026-09-28) and starved the node.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 512Mi

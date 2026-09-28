@@ -8,4 +8,5 @@ resources:
   - routing/ingressroute-https.yaml
   - routing/middlewares.yaml
   - routing/transport.yaml
+  - routing/certificate.yaml
   # maintenance/ is intentionally excluded — reset jobs should only be run manually

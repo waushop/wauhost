@@ -1,0 +1,16 @@
+# cert-manager only reacts to annotations on Ingress objects, not on Traefik
+# IngressRoutes, so the unifi cert needs an explicit Certificate. The
+# original one was created by hand and lost; the cert expired 2026-02-18.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: unifi-tls
+  namespace: unifi
+spec:
+  secretName: unifi-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  commonName: unifi.waushop.ee
+  dnsNames:
+    - unifi.waushop.ee
