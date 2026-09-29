@@ -23,12 +23,26 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "wauhive.serviceAccountName" . }}
-      {{- if .Values.litestream.enabled }}
-      # Init container: pulls the latest snapshot+WAL from object storage if
-      # the PVC came up empty (fresh node, lost volume). The
-      # `-if-db-not-exists` and `-if-replica-exists` flags make this a no-op
-      # on a healthy PVC and on the very-first deploy with no replica yet.
       initContainers:
+        # The backend runs as uid 65532 (nonroot) but the PVC root and anything
+        # created by root-running sidecars (litestream) is owned by root, so
+        # the drone workspace dir was unwritable ("mkdir: permission denied").
+        # Hand the workspace tree to the backend user on every start; cheap and
+        # idempotent.
+        - name: fix-perms
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - mkdir -p /data/workspace && chown -R 65532:101 /data/workspace
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if .Values.litestream.enabled }}
+        # Pulls the latest snapshot+WAL from object storage if the PVC came up
+        # empty (fresh node, lost volume). The `-if-db-not-exists` and
+        # `-if-replica-exists` flags make this a no-op on a healthy PVC and on
+        # the very-first deploy with no replica yet.
         - name: litestream-restore
           image: "{{ .Values.litestream.image.repository }}:{{ .Values.litestream.image.tag }}"
           imagePullPolicy: {{ .Values.litestream.image.pullPolicy }}
