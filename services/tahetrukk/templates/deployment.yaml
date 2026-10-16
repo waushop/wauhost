@@ -17,10 +17,11 @@ spec:
       {{- include "tahetrukk.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        tahetrukk.ee/smtp-config: "b5adbd7dc4802608e54837b2ede820396f4599303b294cfed950570401b30c54"
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "tahetrukk.selectorLabels" . | nindent 8 }}
     spec:
@@ -41,6 +42,11 @@ spec:
             - name: http
               containerPort: 3000
               protocol: TCP
+          {{- with .Values.smtpSecretName }}
+          envFrom:
+            - secretRef:
+                name: {{ . | quote }}
+          {{- end }}
           env:
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
