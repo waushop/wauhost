@@ -18,4 +18,10 @@ data:
             endpoint: {{ .Values.litestream.endpoint | quote }}
             region: {{ .Values.litestream.region | quote }}
             sync-interval: {{ .Values.litestream.syncInterval }}
+            {{- with .Values.litestream.snapshotInterval }}
+            snapshot-interval: {{ . }}
+            {{- end }}
+            {{- with .Values.litestream.retention }}
+            retention: {{ . }}
+            {{- end }}
 {{- end }}

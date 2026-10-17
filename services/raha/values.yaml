@@ -74,7 +74,7 @@ env:
 #        LITESTREAM_SECRET_ACCESS_KEY
 #   2. Set litestream.enabled=true.
 litestream:
-  enabled: false
+  enabled: true
   image:
     repository: litestream/litestream
     tag: "0.3.13"
@@ -83,6 +83,10 @@ litestream:
   endpoint: "hel1.your-objectstorage.com"
   region: "eu-central"
   syncInterval: "10s"
+  # Restore points: a daily snapshot plus the change log, kept for 7 days, so
+  # a bad import or a mistaken bulk delete can be undone to any moment that week.
+  snapshotInterval: "24h"
+  retention: "168h"
   resources:
     limits:
       cpu: 100m
