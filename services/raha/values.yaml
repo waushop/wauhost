@@ -1,9 +1,15 @@
 replicaCount: 1
 deploymentAnnotations: {}
-# SQLite + WAL is single-writer. Recreate ensures the old pod releases the PVC
-# before the new pod tries to attach (RWO).
+# Rolling update: the new pod becomes ready before the old one is removed, so
+# Traefik never has zero backends (a Recreate strategy served a Traefik 404 for
+# ~30 s on every deploy). Safe for SQLite here: both pods run on the single
+# node and share the local-path volume; the app sets WAL + busy_timeout, so
+# the brief overlap waits on locks instead of failing.
 deploymentStrategy:
-  type: Recreate
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
 image:
   repository: ghcr.io/waushop/raha
   # `tag` is auto-bumped to the short git SHA by the app's deploy.yml after
