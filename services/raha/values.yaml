@@ -62,6 +62,9 @@ persistence:
 env:
   NODE_ENV: production
   DB_PATH: "/data/raha.sqlite"
+  # Absolute base for nudge-email links and the Enable Banking redirect
+  # (https://raha.waushop.ee/bank/callback must be registered with them).
+  APP_URL: "https://raha.waushop.ee"
 # Continuous SQLite-to-object-storage replication via Litestream. Mirrors the
 # wauhive setup: init container restores from the bucket on a fresh PVC, sidecar
 # ships WAL frames every `syncInterval`. Disabled by default until the bucket
